@@ -3,39 +3,100 @@
 namespace App\Http\Controllers;
 
 use App\Models\Document;
+use App\Models\Department;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class DocumentController extends Controller
 {
     /**
-     * LISTING DOKUMEN
+     * LIST DOKUMEN (ALL ROLES)
      */
-    public function index()
+    public function index(Request $request)
     {
         $user = Auth::user();
 
-        // ADMIN (1) & SUPERUSER (2) → semua dokumen
-        if (in_array($user->role_id, [1, 2])) {
-            $documents = Document::with('department', 'creator')
-                ->latest()
-                ->get();
-        }
-        // USER (3) → hanya dokumen departemen sendiri
-        else {
-            $documents = Document::with('department', 'creator')
-                ->where('department_id', $user->department_id)
-                ->latest()
-                ->get();
+        // Base query + relasi
+        $documents = Document::with('department', 'creator');
+
+        // ============================
+        // ROLE RESTRICTION
+        // ============================
+        if ($user->role_id == 3) {
+            // User hanya bisa lihat dokumen departemen sendiri
+            $documents->where('department_id', $user->department_id);
         }
 
-        return view('documents.index', compact('documents'));
+        // ============================
+        // FILTERS
+        // ============================
+
+        // Search (judul / nomor)
+        if ($request->search) {
+            $documents->where(function ($q) use ($request) {
+                $q->where('title', 'LIKE', '%' . $request->search . '%')
+                    ->orWhere('document_number', 'LIKE', '%' . $request->search . '%');
+            });
+        }
+
+        // Filter kategori
+        if ($request->kategori) {
+            $documents->where('kategori', $request->kategori);
+        }
+
+        // Filter tanggal
+        if ($request->tanggal) {
+            $documents->whereDate('created_at', $request->tanggal);
+        }
+
+        // Filter departemen (admin only)
+        if (in_array($user->role_id, [1, 2]) && $request->department_id) {
+            $documents->where('department_id', $request->department_id);
+        }
+
+        // Filter creator (admin only)
+        // if (in_array($user->role_id, [1, 2]) && $request->creator_id) {
+        //     $documents->where('created_by', $request->creator_id);
+        // }
+
+        // ============================
+        // SORTING
+        // ============================
+        $sort = $request->get('sort', 'created_at');
+        $order = $request->get('order', 'desc');
+
+        $allowedSort = [
+            'document_number',
+            'title',
+            'kategori',
+            'created_at',
+        ];
+
+        if (!in_array($sort, $allowedSort)) {
+            $sort = 'created_at';
+        }
+
+        $documents = $documents->orderBy($sort, $order);
+
+        // ============================
+        // PAGINATION
+        // ============================
+        $documents = $documents->paginate(10);
+        $documents->appends($request->all());
+
+        // Hitung hasil filter
+        $totalResult = $documents->total();
+
+        return view('documents.index', [
+            'documents' => $documents,
+            'departments' => \App\Models\Department::all(),
+            'totalResult' => $totalResult
+        ]);
     }
 
 
     /**
-     * DETAIL DOKUMEN (SHOW)
-     * Semua role bisa melihat detail
+     * SHOW
      */
     public function show($id)
     {
@@ -43,39 +104,30 @@ class DocumentController extends Controller
         return view('documents.show', compact('document'));
     }
 
-
     /**
-     * FORM CREATE (ADMIN ONLY)
+     * CREATE (ADMIN)
      */
     public function create()
     {
-        $this->ensureAdmin();
-
-        // Ambil semua departemen
-        $departments = \App\Models\Department::all();
-
+        $departments = Department::all();
         return view('documents.create', compact('departments'));
     }
 
-
-
     /**
-     * SIMPAN DATA (ADMIN ONLY)
+     * STORE (ADMIN)
      */
     public function store(Request $request)
     {
-        $this->ensureAdmin();
-
         $request->validate([
             'document_number' => 'required|string',
             'title'           => 'required|string',
             'kategori'        => 'required|string',
             'department_id'   => 'required|integer',
-            'file'            => 'required|mimes:pdf|max:51200',
+            'file'            => 'required|mimes:pdf|max:51200'
         ]);
 
-        // Upload file
-        $path = $request->file('file')->store('documents', 'public');
+        // Save file to new path
+        $path = $request->file('file')->store('docs_storage', 'public');
 
         Document::create([
             'document_number' => $request->document_number,
@@ -83,34 +135,27 @@ class DocumentController extends Controller
             'kategori'        => $request->kategori,
             'department_id'   => $request->department_id,
             'file_path'       => $path,
-            'created_by'      => Auth::id(),  // 100% aman
+            'created_by'      => Auth::id(),
         ]);
 
         return redirect()->route('documents.index')
             ->with('success', 'Dokumen berhasil dibuat.');
     }
 
-
     /**
-     * FORM EDIT (ADMIN ONLY)
+     * EDIT (ADMIN)
      */
     public function edit($id)
     {
-        $this->ensureAdmin();
         $document = Document::findOrFail($id);
-
         return view('documents.edit', compact('document'));
     }
 
-
     /**
-     * UPDATE DOKUMEN (ADMIN ONLY)
+     * UPDATE (ADMIN)
      */
     public function update(Request $request, $id)
     {
-        $this->ensureAdmin();
-        $document = Document::findOrFail($id);
-
         $request->validate([
             'document_number' => 'required|string',
             'title'           => 'required|string',
@@ -119,9 +164,10 @@ class DocumentController extends Controller
             'file'            => 'nullable|mimes:pdf|max:51200',
         ]);
 
-        // Update file jika diupload
+        $document = Document::findOrFail($id);
+
         if ($request->hasFile('file')) {
-            $path = $request->file('file')->store('documents', 'public');
+            $path = $request->file('file')->store('docs_storage', 'public');
             $document->file_path = $path;
         }
 
@@ -136,29 +182,15 @@ class DocumentController extends Controller
             ->with('success', 'Dokumen berhasil diperbarui.');
     }
 
-
     /**
-     * HAPUS DOKUMEN (ADMIN ONLY)
+     * DELETE
      */
     public function destroy($id)
     {
-        $this->ensureAdmin();
-
         $document = Document::findOrFail($id);
         $document->delete();
 
         return redirect()->route('documents.index')
             ->with('success', 'Dokumen berhasil dihapus.');
-    }
-
-
-    /**
-     * VALIDASI ADMIN
-     */
-    private function ensureAdmin()
-    {
-        if (!Auth::check() || Auth::user()->role_id !== 1) {
-            abort(403, 'Akses ditolak. Hanya Admin yang boleh melakukan tindakan ini.');
-        }
     }
 }
