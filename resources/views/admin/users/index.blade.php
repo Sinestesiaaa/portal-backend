@@ -11,43 +11,64 @@
         </div>
         @endif
 
-        {{-- BUTTON TAMBAH --}}
-        <a href="{{ route('admin.users.create') }}"
-            class="bg-green-600 text-white px-4 py-2 rounded shadow hover:bg-green-700">
-            + Tambah Pengguna
-        </a>
+        {{-- BUTTON + FILTER WRAPPER --}}
+        <div class="flex justify-between items-center mb-6">
 
-        {{-- FILTER FORM --}}
-        <form method="GET" class="flex items-center gap-3 mt-6 mb-4">
+            {{-- FILTER LEFT --}}
+            <form method="GET" class="flex items-center gap-3">
 
-            <input type="text" name="name" placeholder="Cari nama..."
-                value="{{ request('name') }}"
-                class="border rounded px-3 py-2 w-64">
+                <input type="text" name="name" placeholder="Cari nama..."
+                    value="{{ request('name') }}"
+                    class="border rounded px-3 py-2 w-64">
 
-            <select name="role_id" class="border rounded px-3 py-2">
-                <option value="">Semua Role</option>
-                <option value="1" {{ request('role_id')==1 ? 'selected':'' }}>Admin</option>
-                <option value="2" {{ request('role_id')==2 ? 'selected':'' }}>Super User</option>
-                <option value="3" {{ request('role_id')==3 ? 'selected':'' }}>User</option>
-            </select>
+                <select name="role_id" class="border rounded px-3 py-2">
+                    <option value="">Semua Role</option>
+                    <option value="1" {{ request('role_id')==1 ? 'selected':'' }}>Admin</option>
+                    <option value="2" {{ request('role_id')==2 ? 'selected':'' }}>Super User</option>
+                    <option value="3" {{ request('role_id')==3 ? 'selected':'' }}>User</option>
+                </select>
 
-            <select name="department_id" class="border rounded px-3 py-2">
-                <option value="">Semua Departemen</option>
-                @foreach($departments as $dept)
-                <option value="{{ $dept->id }}" {{ request('department_id')==$dept->id ? 'selected':'' }}>
-                    {{ $dept->name }}
-                </option>
-                @endforeach
-            </select>
+                <select name="department_id" class="border rounded px-3 py-2">
+                    <option value="">Semua Departemen</option>
+                    @foreach($departments as $dept)
+                    <option value="{{ $dept->id }}" {{ request('department_id')==$dept->id ? 'selected':'' }}>
+                        {{ $dept->name }}
+                    </option>
+                    @endforeach
+                </select>
 
-            <button class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Filter</button>
+                <button class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Filter</button>
 
-            <a href="{{ route('admin.users.index') }}"
-                class="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400">
-                Reset
+                <a href="{{ route('admin.users.index') }}"
+                    class="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400">
+                    Reset
+                </a>
+            </form>
+
+            {{-- BUTTON TAMBAH DI KANAN --}}
+            <a href="{{ route('admin.users.create') }}"
+                class="bg-green-600 text-white px-4 py-2 rounded shadow hover:bg-green-700">
+                + Tambah Pengguna
             </a>
-        </form>
+        </div>
 
+
+        {{-- DEPARTEMEN CONFIG --}}
+        @php
+        $departmentConfig = [
+        'CPSD' => ['color'=>'#bbf7d0', 'text'=>'#166534', 'icon'=>'🧩'],
+        'ENG' => ['color'=>'#fecaca', 'text'=>'#991b1b', 'icon'=>'🔧'],
+        'SM' => ['color'=>'#e0e7ff', 'text'=>'#3730a3', 'icon'=>'🧭'],
+        'SHE' => ['color'=>'#d1fae5', 'text'=>'#065f46', 'icon'=>'🛡️'],
+        'SPD' => ['color'=>'#fef9c3', 'text'=>'#854d0e', 'icon'=>'📊'],
+        'FAT' => ['color'=>'#dbeafe', 'text'=>'#1e3a8a', 'icon'=>'📘'],
+        'PDV' => ['color'=>'#ede9fe', 'text'=>'#5b21b6', 'icon'=>'🏭'],
+        'GS' => ['color'=>'#f3e8ff', 'text'=>'#6b21a8', 'icon'=>'🛠️'],
+        'HC' => ['color'=>'#fee2e2', 'text'=>'#b91c1c', 'icon'=>'👥'],
+        'PLANT'=> ['color'=>'#dcfce7', 'text'=>'#15803d', 'icon'=>'🌱'],
+        'OPR' => ['color'=>'#e0f2fe', 'text'=>'#0369a1', 'icon'=>'⚙️'],
+        ];
+        @endphp
 
 
         {{-- TABLE --}}
@@ -55,30 +76,10 @@
             <table class="w-full border-collapse">
                 <thead class="bg-green-100">
                     <tr>
-                        <th class="border p-2">
-                            <a href="?sort=name&order={{ request('order')=='asc'?'desc':'asc' }}">
-                                Nama
-                            </a>
-                        </th>
-
-                        <th class="border p-2">
-                            <a href="?sort=email&order={{ request('order')=='asc'?'desc':'asc' }}">
-                                Email
-                            </a>
-                        </th>
-
-                        <th class="border p-2">
-                            <a href="?sort=role_id&order={{ request('order')=='asc'?'desc':'asc' }}">
-                                Role
-                            </a>
-                        </th>
-
-                        <th class="border p-2">
-                            <a href="?sort=department_id&order={{ request('order')=='asc'?'desc':'asc' }}">
-                                Departemen
-                            </a>
-                        </th>
-
+                        <th class="border p-2">Nama</th>
+                        <th class="border p-2">Email</th>
+                        <th class="border p-2">Role</th>
+                        <th class="border p-2">Departemen</th>
                         <th class="border p-2">Aksi</th>
                     </tr>
                 </thead>
@@ -87,7 +88,7 @@
                     @foreach ($users as $user)
                     <tr class="hover:bg-gray-50">
 
-                        {{-- NAMA (klik untuk modal detail) --}}
+                        {{-- NAMA --}}
                         <td class="border p-2">
                             <a href="#" class="text-blue-600 hover:underline open-user"
                                 data-user='@json($user)'>
@@ -95,25 +96,43 @@
                             </a>
                         </td>
 
+                        {{-- EMAIL --}}
                         <td class="border p-2">{{ $user->email }}</td>
 
                         {{-- ROLE BADGE --}}
                         <td class="border p-2">
                             @if($user->role_id == 1)
-                            <span class="px-3 py-1 bg-red-200 text-red-800 rounded-full text-sm">Admin</span>
+                            <span class="px-3 py-1 rounded-full text-sm flex items-center gap-1 bg-red-200 text-red-900 w-fit">
+                                🔑 Admin
+                            </span>
                             @elseif($user->role_id == 2)
-                            <span class="px-3 py-1 bg-blue-200 text-blue-800 rounded-full text-sm">Super User</span>
+                            <span class="px-3 py-1 rounded-full text-sm flex items-center gap-1 bg-blue-200 text-blue-900 w-fit">
+                                ⭐ Super User
+                            </span>
                             @else
-                            <span class="px-3 py-1 bg-green-200 text-green-800 rounded-full text-sm">User</span>
+                            <span class="px-3 py-1 rounded-full text-sm flex items-center gap-1 bg-green-200 text-green-900 w-fit">
+                                👤 User
+                            </span>
                             @endif
                         </td>
 
-                        {{-- DEPARTEMEN --}}
+                        {{-- DEPARTEMEN BADGE --}}
                         <td class="border p-2">
-                            <span class="px-3 py-1 bg-gray-200 rounded-full text-sm">
-                                {{ $user->department->name ?? '-' }}
+                            @php
+                            $deptName = $user->department->name ?? null;
+                            $dept = $departmentConfig[$deptName] ?? null;
+                            @endphp
+
+                            @if($dept)
+                            <span class="px-3 py-1 rounded-full text-sm flex items-center gap-1 w-fit"
+                                style="background-color: {{ $dept['color'] }}; color: {{ $dept['text'] }};">
+                                {{ $dept['icon'] }} {{ $deptName }}
                             </span>
+                            @else
+                            <span class="px-3 py-1 bg-gray-200 text-gray-700 rounded-full text-sm">-</span>
+                            @endif
                         </td>
+
 
                         {{-- ACTION --}}
                         <td class="border p-2 text-center">

@@ -3,6 +3,7 @@
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\DashboardController;
 use Illuminate\Support\Facades\Route;
 
 // Redirect ke login
@@ -22,49 +23,39 @@ Route::middleware(['auth'])->group(function () {
 });
 
 // =====================================
-// DOCUMENT — VIEW (ALL ROLES)
+// PREVIEW PDF (HARUS DI ATAS /documents/{id})
+// =====================================
+Route::get('/documents/preview/{id}', [DocumentController::class, 'preview'])
+    ->middleware('auth')
+    ->name('documents.preview');
+
+// =====================================
+// DOCUMENT LIST (ALL ROLES)
 // =====================================
 Route::middleware(['auth'])->group(function () {
-
-    // LIST
-    Route::get('/documents', [DocumentController::class, 'index'])
-        ->name('documents.index');
+    Route::get('/documents', [DocumentController::class, 'index'])->name('documents.index');
 });
 
 // =====================================
-// DOCUMENT — CRUD (ADMIN ONLY)
+// DOCUMENT CRUD (ADMIN ONLY)
 // =====================================
 Route::middleware(['auth', 'admin'])->prefix('documents')->group(function () {
 
-    // CREATE HARUS DITULIS SEBELUM /documents/{id}
-    Route::get('/create', [DocumentController::class, 'create'])
-        ->name('documents.create');
+    Route::get('/create', [DocumentController::class, 'create'])->name('documents.create');
+    Route::post('/', [DocumentController::class, 'store'])->name('documents.store');
 
-    Route::post('/', [DocumentController::class, 'store'])
-        ->name('documents.store');
+    Route::get('/{id}/edit', [DocumentController::class, 'edit'])->name('documents.edit');
+    Route::put('/{id}', [DocumentController::class, 'update'])->name('documents.update');
 
-    // EDIT
-    Route::get('/{id}/edit', [DocumentController::class, 'edit'])
-        ->name('documents.edit');
-
-    // UPDATE
-    Route::put('/{id}', [DocumentController::class, 'update'])
-        ->name('documents.update');
-
-    // DELETE
-    Route::delete('/{id}', [DocumentController::class, 'destroy'])
-        ->name('documents.destroy');
+    Route::delete('/{id}', [DocumentController::class, 'destroy'])->name('documents.destroy');
 });
 
 // =====================================
-// DETAIL (RESTFUL)
+// SHOW DOCUMENT DETAIL
 // =====================================
 Route::middleware(['auth'])->group(function () {
-
-    Route::get('/documents/{id}', [DocumentController::class, 'show'])
-        ->name('documents.show');
+    Route::get('/documents/{id}', [DocumentController::class, 'show'])->name('documents.show');
 });
-
 
 // =====================================
 // USER MANAGEMENT (ADMIN ONLY)
@@ -72,8 +63,13 @@ Route::middleware(['auth'])->group(function () {
 Route::middleware(['auth', 'admin'])
     ->prefix('admin')->name('admin.')
     ->group(function () {
-
         Route::resource('users', UserController::class);
     });
+
+Route::get('/dashboard', [DashboardController::class, 'index'])
+    ->middleware(['auth'])
+    ->name('dashboard');
+
+
 
 require __DIR__ . '/auth.php';

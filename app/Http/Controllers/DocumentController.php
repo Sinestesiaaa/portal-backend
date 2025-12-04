@@ -10,32 +10,23 @@ use Illuminate\Support\Facades\Auth;
 class DocumentController extends Controller
 {
     /**
-     * LIST DOKUMEN (ALL ROLES)
+     * LIST DOKUMEN
      */
     public function index(Request $request)
     {
         $user = Auth::user();
-
-        // Base query + relasi
         $documents = Document::with('department', 'creator');
 
-        // ============================
-        // ROLE RESTRICTION
-        // ============================
+        // Restriksi role
         if ($user->role_id == 3) {
-            // User hanya bisa lihat dokumen departemen sendiri
             $documents->where('department_id', $user->department_id);
         }
 
-        // ============================
-        // FILTERS
-        // ============================
-
-        // Search (judul / nomor)
+        // Search
         if ($request->search) {
             $documents->where(function ($q) use ($request) {
-                $q->where('title', 'LIKE', '%' . $request->search . '%')
-                    ->orWhere('document_number', 'LIKE', '%' . $request->search . '%');
+                $q->where('title', 'LIKE', "%{$request->search}%")
+                    ->orWhere('document_number', 'LIKE', "%{$request->search}%");
             });
         }
 
@@ -49,148 +40,127 @@ class DocumentController extends Controller
             $documents->whereDate('created_at', $request->tanggal);
         }
 
-        // Filter departemen (admin only)
+        // Filter departemen
         if (in_array($user->role_id, [1, 2]) && $request->department_id) {
             $documents->where('department_id', $request->department_id);
         }
 
-        // Filter creator (admin only)
-        // if (in_array($user->role_id, [1, 2]) && $request->creator_id) {
-        //     $documents->where('created_by', $request->creator_id);
-        // }
-
-        // ============================
-        // SORTING
-        // ============================
+        // Sorting
+        $allowedSort = ['document_number', 'title', 'kategori', 'created_at'];
         $sort = $request->get('sort', 'created_at');
         $order = $request->get('order', 'desc');
-
-        $allowedSort = [
-            'document_number',
-            'title',
-            'kategori',
-            'created_at',
-        ];
 
         if (!in_array($sort, $allowedSort)) {
             $sort = 'created_at';
         }
 
-        $documents = $documents->orderBy($sort, $order);
+        $documents->orderBy($sort, $order);
 
-        // ============================
-        // PAGINATION
-        // ============================
+        // Pagination
         $documents = $documents->paginate(10);
         $documents->appends($request->all());
 
-        // Hitung hasil filter
-        $totalResult = $documents->total();
-
         return view('documents.index', [
             'documents' => $documents,
-            'departments' => \App\Models\Department::all(),
-            'totalResult' => $totalResult
+            'departments' => Department::all(),
+            'totalResult' => $documents->total(),
         ]);
     }
 
-
     /**
-     * SHOW
+     * PREVIEW PDF DALAM MODAL
      */
+    public function preview($id)
+    {
+        $doc = Document::findOrFail($id);
+
+        $path = storage_path('app/public/' . $doc->file_path);
+
+        if (!file_exists($path)) {
+            abort(404, "File tidak ditemukan.");
+        }
+
+        return response()->file($path, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . basename($path) . '"',
+            'X-Content-Type-Options' => 'nosniff'
+        ]);
+    }
+
     public function show($id)
     {
         $document = Document::with('department', 'creator')->findOrFail($id);
         return view('documents.show', compact('document'));
     }
 
-    /**
-     * CREATE (ADMIN)
-     */
     public function create()
     {
-        $departments = Department::all();
-        return view('documents.create', compact('departments'));
+        return view('documents.create', [
+            'departments' => Department::all()
+        ]);
     }
 
-    /**
-     * STORE (ADMIN)
-     */
     public function store(Request $request)
     {
         $request->validate([
-            'document_number' => 'required|string',
-            'title'           => 'required|string',
-            'kategori'        => 'required|string',
-            'department_id'   => 'required|integer',
-            'file'            => 'required|mimes:pdf|max:51200'
+            'document_number' => 'required',
+            'title' => 'required',
+            'kategori' => 'required',
+            'department_id' => 'required',
+            'file' => 'required|mimes:pdf|max:51200',
         ]);
 
-        // Save file to new path
         $path = $request->file('file')->store('docs_storage', 'public');
 
         Document::create([
             'document_number' => $request->document_number,
-            'title'           => $request->title,
-            'kategori'        => $request->kategori,
-            'department_id'   => $request->department_id,
-            'file_path'       => $path,
-            'created_by'      => Auth::id(),
+            'title' => $request->title,
+            'kategori' => $request->kategori,
+            'department_id' => $request->department_id,
+            'file_path' => $path,
+            'created_by' => Auth::id(),
         ]);
 
-        return redirect()->route('documents.index')
-            ->with('success', 'Dokumen berhasil dibuat.');
+        return redirect()->route('documents.index')->with('success', 'Dokumen berhasil dibuat.');
     }
 
-    /**
-     * EDIT (ADMIN)
-     */
     public function edit($id)
     {
-        $document = Document::findOrFail($id);
-        return view('documents.edit', compact('document'));
+        return view('documents.edit', [
+            'document' => Document::findOrFail($id)
+        ]);
     }
 
-    /**
-     * UPDATE (ADMIN)
-     */
     public function update(Request $request, $id)
     {
         $request->validate([
-            'document_number' => 'required|string',
-            'title'           => 'required|string',
-            'kategori'        => 'required|string',
-            'department_id'   => 'required|integer',
-            'file'            => 'nullable|mimes:pdf|max:51200',
+            'document_number' => 'required',
+            'title' => 'required',
+            'kategori' => 'required',
+            'department_id' => 'required',
+            'file' => 'nullable|mimes:pdf|max:51200',
         ]);
 
-        $document = Document::findOrFail($id);
+        $doc = Document::findOrFail($id);
 
-        if ($request->hasFile('file')) {
-            $path = $request->file('file')->store('docs_storage', 'public');
-            $document->file_path = $path;
+        if ($request->file('file')) {
+            $doc->file_path = $request->file('file')->store('docs_storage', 'public');
         }
 
-        $document->update([
+        $doc->update([
             'document_number' => $request->document_number,
-            'title'           => $request->title,
-            'kategori'        => $request->kategori,
-            'department_id'   => $request->department_id,
+            'title' => $request->title,
+            'kategori' => $request->kategori,
+            'department_id' => $request->department_id,
         ]);
 
-        return redirect()->route('documents.index')
-            ->with('success', 'Dokumen berhasil diperbarui.');
+        return redirect()->route('documents.index')->with('success', 'Dokumen berhasil diperbarui.');
     }
 
-    /**
-     * DELETE
-     */
     public function destroy($id)
     {
-        $document = Document::findOrFail($id);
-        $document->delete();
+        Document::findOrFail($id)->delete();
 
-        return redirect()->route('documents.index')
-            ->with('success', 'Dokumen berhasil dihapus.');
+        return redirect()->route('documents.index')->with('success', 'Dokumen berhasil dihapus.');
     }
 }
