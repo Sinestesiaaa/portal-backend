@@ -1,130 +1,280 @@
 <x-app-layout>
 
-    <div class="max-w-7xl mx-auto px-6 py-8 space-y-6">
+    <div class="max-w-7xl mx-auto px-6 py-10 space-y-10">
 
-        {{-- HEADER --}}
-        <div class="p-5 rounded-xl bg-gradient-to-r from-green-600 to-green-400 shadow-lg text-white">
-            <h1 class="text-2xl font-bold">📊 Dashboard</h1>
-            <p class="text-white/90">Ringkasan aktivitas dokumen</p>
+        {{-- HEADER CARD --}}
+        <div class="p-8 rounded-2xl bg-gradient-to-r from-[#0AA03A] to-[#16A34A] shadow-lg text-white">
+            <h1 class="text-3xl font-bold tracking-wide">📊 Dashboard</h1>
+            <p class="text-white/90 text-sm">Ringkasan aktivitas dokumen perusahaan</p>
         </div>
 
-        {{-- STATISTIC CARDS --}}
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div class="p-5 bg-white rounded-xl shadow border">
-                <p class="text-xs text-gray-500">Total Dokumen</p>
-                <p class="text-3xl font-bold text-green-700">
-                    {{ array_sum($categoryCount->toArray()) }}
-                </p>
+
+        {{-- ========================================= --}}
+        {{-- STAT CARDS --}}
+        {{-- ========================================= --}}
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+
+            {{-- TOTAL --}}
+            <div class="p-6 rounded-xl shadow-md border border-[#0AA03A]/30 bg-[#E8FCEB]">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 bg-[#0AA03A]/20 rounded-full flex items-center justify-center">
+                        <span class="text-[#0AA03A] text-xl">📄</span>
+                    </div>
+                    <div>
+                        <p class="text-xs text-green-800 font-medium">Total Dokumen</p>
+                        <p class="text-3xl font-bold text-[#087C2D]">
+                            {{ array_sum($categoryCount->toArray()) }}
+                        </p>
+                    </div>
+                </div>
             </div>
 
+            {{-- PER KATEGORI --}}
             @foreach ($categoryCount as $kat => $total)
-                <div class="p-5 bg-white rounded-xl shadow border">
-                    <p class="text-xs text-gray-500">{{ $kat }}</p>
-                    <p class="text-3xl font-bold text-green-700">{{ $total }}</p>
+                <div class="p-6 rounded-xl shadow-md border border-[#0AA03A]/20 bg-white">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 bg-[#0AA03A]/15 rounded-full flex items-center justify-center">
+                            <span class="text-[#0AA03A] text-xl">📁</span>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-600 font-medium">{{ strtoupper($kat) }}</p>
+                            <p class="text-3xl font-bold text-[#0AA03A]">{{ $total }}</p>
+                        </div>
+                    </div>
                 </div>
             @endforeach
+
         </div>
 
-        {{-- MINI CARDS ROW (3 kolom) --}}
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 
-            {{-- TOP DEPT --}}
-            <div class="bg-white p-5 rounded-xl shadow border">
-                <h2 class="font-semibold mb-2 text-sm">🏭 Dept Paling Aktif</h2>
-                @foreach ($topDepartments as $dept)
-                    <div class="flex justify-between text-sm py-1 border-b last:border-none">
-                        <span>{{ $dept->department->name }}</span>
-                        <span class="font-semibold">{{ $dept->total }}</span>
-                    </div>
-                @endforeach
+
+        {{-- ========================================= --}}
+        {{-- TOP LIST PANELS --}}
+        {{-- ========================================= --}}
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+            {{-- TOP DEPARTEMEN --}}
+            <div class="rounded-xl shadow-md border border-gray-200 overflow-hidden bg-white">
+                <div class="bg-[#0AA03A] text-white px-4 py-3 text-sm font-semibold">
+                    🏭 Departemen Paling Aktif
+                </div>
+
+                <div class="p-5 space-y-3">
+                    @foreach ($topDepartments as $dept)
+                        <div
+                            class="flex justify-between items-center p-2 rounded-lg bg-[#E8FCEB] border border-[#B7EFC2]">
+                            <span class="text-gray-800 text-sm">{{ $dept->department->name }}</span>
+                            <span class="text-[#087C2D] font-semibold">{{ $dept->total }}</span>
+                        </div>
+                    @endforeach
+                </div>
             </div>
 
             {{-- TOP KATEGORI --}}
-            <div class="bg-white p-5 rounded-xl shadow border">
-                <h2 class="font-semibold mb-2 text-sm">📁 Kategori Terbanyak Update</h2>
-                @foreach ($topKategori as $kat)
-                    <div class="flex justify-between text-sm py-1 border-b last:border-none">
-                        <span>{{ $kat->kategori }}</span>
-                        <span class="font-semibold">{{ $kat->total }}</span>
-                    </div>
-                @endforeach
+            <div class="rounded-xl shadow-md border border-gray-200 overflow-hidden bg-white">
+                <div class="bg-[#0AA03A] text-white px-4 py-3 text-sm font-semibold">
+                    📁 Kategori Terbanyak Update
+                </div>
+
+                <div class="p-5 space-y-3">
+                    @foreach ($topKategori as $kat)
+                        <div
+                            class="flex justify-between items-center p-2 rounded-lg bg-[#E8FCEB] border border-[#B7EFC2]">
+                            <span class="text-gray-800 text-sm">{{ $kat->kategori }}</span>
+                            <span class="text-[#087C2D] font-semibold">{{ $kat->total }}</span>
+                        </div>
+                    @endforeach
+                </div>
             </div>
 
             {{-- LAST UPDATED --}}
-            <div class="bg-white p-5 rounded-xl shadow border">
-                <h2 class="font-semibold mb-2 text-sm">⏱ Last Updated</h2>
+            <div class="rounded-xl shadow-md border border-gray-200 overflow-hidden bg-white">
+                <div class="bg-[#0AA03A] text-white px-4 py-3 text-sm font-semibold">
+                    ⏱ Update Terakhir
+                </div>
 
-                @forelse($lastUpdated as $doc)
-                    <div class="flex justify-between items-center text-sm py-1 border-b last:border-none">
-
-                        <div>
-                            <p class="font-semibold">{{ $doc->document_number }}</p>
-                            <p class="text-gray-500 text-xs">{{ $doc->department->name }}</p>
+                <div class="p-5 space-y-3">
+                    @forelse ($lastUpdated as $doc)
+                        <div class="flex justify-between items-center p-2 rounded-lg bg-gray-50 border border-gray-200">
+                            <div>
+                                <p class="font-semibold text-gray-800">{{ $doc->document_number }}</p>
+                                <p class="text-xs text-gray-500">{{ $doc->department->name }}</p>
+                            </div>
+                            <span class="text-gray-400 text-xs">{{ $doc->updated_at->diffForHumans() }}</span>
                         </div>
-
-                        <p class="text-xs text-gray-500 whitespace-nowrap">
-                            {{ $doc->updated_at->diffForHumans() }}
-                        </p>
-                    </div>
-                @empty
-                    <p class="text-gray-500">Belum ada update.</p>
-                @endforelse
+                    @empty
+                        <p class="text-gray-500 text-sm">Belum ada update.</p>
+                    @endforelse
+                </div>
             </div>
 
         </div>
 
-        {{-- MAIN CHARTS --}}
+
+
+        {{-- ========================================= --}}
+        {{-- MAIN CHARTS (RAPIH & KECIL) --}}
+        {{-- ========================================= --}}
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-            <div class="bg-white p-6 rounded-xl shadow-lg border">
-                <h2 class="text-lg font-semibold mb-3">Kategori Dokumen</h2>
-                <canvas id="kategoriChart" height="230"></canvas>
+            {{-- Pie Chart --}}
+            <div class="bg-white rounded-xl shadow-md border border-gray-200">
+                <div class="bg-[#0AA03A] text-white px-4 py-3 rounded-t-xl font-semibold">
+                    Kategori Dokumen
+                </div>
+                <div class="p-4 flex justify-center items-center h-64">
+                    <canvas id="kategoriChart" height="80"></canvas>
+                </div>
             </div>
 
-            <div class="bg-white p-6 rounded-xl shadow-lg border">
-                <h2 class="text-lg font-semibold mb-3">Upload per Bulan</h2>
-                <canvas id="uploadChart" height="230"></canvas>
+            {{-- Line Chart --}}
+            <div class="bg-white rounded-xl shadow-md border border-gray-200">
+                <div class="bg-[#0AA03A] text-white px-4 py-3 rounded-t-xl font-semibold">
+                    Upload per Bulan
+                </div>
+                <div class="p-4 flex justify-center items-center h-64">
+                    <canvas id="uploadChart" height="80"></canvas>
+                </div>
             </div>
 
         </div>
+
+
+
+        {{-- ========================================= --}}
+        {{-- HORIZONTAL BAR — TOTAL PER DEPARTEMEN --}}
+        {{-- ========================================= --}}
+        <div class="bg-white rounded-xl shadow-md border border-gray-200">
+            <div class="bg-[#0AA03A] text-white px-4 py-3 rounded-t-xl font-semibold">
+                Perbandingan Total Dokumen per Departemen
+            </div>
+            <div class="p-4 flex justify-center items-center h-72">
+                <canvas id="deptTotalChart"></canvas>
+            </div>
+        </div>
+
+
+
+        {{-- ========================================= --}}
+        {{-- PER-DEPARTEMEN CATEGORY CHARTS (3/COL) --}}
+        {{-- ========================================= --}}
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+            @foreach ($deptCategoryData as $deptName => $values)
+                <div class="bg-white rounded-xl shadow-md border border-gray-200">
+
+                    <div class="bg-[#0AA03A] text-white px-3 py-2 rounded-t-xl text-xs font-semibold text-center">
+                        {{ $deptName }} — Kategori
+                    </div>
+
+                    <div class="p-4 flex justify-center items-center h-40">
+                        <canvas id="chart-{{ Str::slug($deptName) }}"></canvas>
+                    </div>
+
+                </div>
+            @endforeach
+
+        </div>
+
     </div>
 
-    {{-- CHART JS --}}
+
+    {{-- ========================================= --}}
+    {{-- SCRIPTS --}}
+    {{-- ========================================= --}}
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 
     <script>
         // PIE CHART
-        const kategoriLabels = @json($categoryCount->keys());
-        const kategoriValues = @json($categoryCount->values());
-
         new Chart(document.getElementById('kategoriChart'), {
             type: 'pie',
             data: {
-                labels: kategoriLabels,
+                labels: @json($categoryCount->keys()),
                 datasets: [{
-                    data: kategoriValues,
-                    backgroundColor: ['#16A34A', '#2563EB', '#FB923C', '#000000'],
+                    data: @json($categoryCount->values()),
+                    backgroundColor: ['#0AA03A', '#16A34A', '#2563EB', '#FB923C']
                 }]
+            },
+            options: {
+                maintainAspectRatio: false
             }
         });
 
         // LINE CHART
-        const uploadLabels = @json($uploadPerMonth->pluck('month'));
-        const uploadValues = @json($uploadPerMonth->pluck('total'));
-
         new Chart(document.getElementById('uploadChart'), {
             type: 'line',
             data: {
-                labels: uploadLabels,
+                labels: @json($uploadPerMonth->pluck('month')),
                 datasets: [{
                     label: 'Upload Bulanan',
-                    data: uploadValues,
-                    borderColor: '#16A34A',
+                    data: @json($uploadPerMonth->pluck('total')),
+                    borderColor: '#0AA03A',
+                    backgroundColor: 'rgba(10,160,58,0.20)',
                     borderWidth: 3,
-                    tension: 0.4,
+                    tension: 0.35
                 }]
+            },
+            options: {
+                maintainAspectRatio: false
             }
         });
+
+        // TOTAL PER DEPARTEMEN (HORIZONTAL)
+        new Chart(document.getElementById('deptTotalChart'), {
+            type: 'bar',
+            data: {
+                labels: @json($departmentTotals->pluck('department.name')),
+                datasets: [{
+                    label: 'Total Dokumen',
+                    data: @json($departmentTotals->pluck('total')),
+                    backgroundColor: '#0AA03A',
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                scales: {
+                    x: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+
+        // MANY SMALL CHARTS PER DEPARTMENT
+        @foreach ($deptCategoryData as $deptName => $data)
+            new Chart(document.getElementById('chart-{{ Str::slug($deptName) }}'), {
+                type: 'bar',
+                data: {
+                    labels: ['SOP', 'IK', 'FORM', 'STD'],
+                    datasets: [{
+                        data: [
+                            {{ $data['SOP'] }},
+                            {{ $data['IK'] }},
+                            {{ $data['FORM'] }},
+                            {{ $data['STD'] }},
+                        ],
+                        backgroundColor: ['#EA580C', '#0AA03A', '#000000', '#2563EB'],
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        @endforeach
     </script>
 
 </x-app-layout>

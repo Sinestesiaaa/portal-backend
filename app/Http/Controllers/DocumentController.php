@@ -127,9 +127,11 @@ class DocumentController extends Controller
     public function edit($id)
     {
         return view('documents.edit', [
-            'document' => Document::findOrFail($id)
+            'document' => Document::findOrFail($id),
+            'departments' => Department::all(),
         ]);
     }
+
 
     public function update(Request $request, $id)
     {

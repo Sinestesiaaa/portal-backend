@@ -12,41 +12,40 @@ class DashboardController extends Controller
     {
         $user = Auth::user();
 
-        // ==========================
-        //  ROLE USER (role 3)
-        // ==========================
+        // ==================================================
+        // ROLE USER (role 3)
+        // ==================================================
         if ($user->role_id == 3) {
 
-            // Last updated documents (10 terbaru)
             $documents = Document::where('department_id', $user->department_id)
                 ->latest('updated_at')
                 ->take(10)
                 ->get();
 
-            // Statistik kategori untuk departemen user
             $categoryCount = Document::select('kategori', DB::raw('count(*) as total'))
                 ->where('department_id', $user->department_id)
                 ->groupBy('kategori')
                 ->pluck('total', 'kategori');
 
-            // Total dokumen
             $totalDocuments = Document::where('department_id', $user->department_id)->count();
 
             return view('dashboard.user', [
                 'documents' => $documents,
                 'categoryCount' => $categoryCount,
-                'totalDocuments' => $totalDocuments
+                'totalDocuments' => $totalDocuments,
             ]);
         }
 
-        // ==========================
-        //  ROLE ADMIN / SUPER USER
-        // ==========================
+        // ==================================================
+        // ADMIN & SUPER USER
+        // ==================================================
 
+        // Statistik kategori
         $categoryCount = Document::select('kategori', DB::raw('count(*) as total'))
             ->groupBy('kategori')
             ->pluck('total', 'kategori');
 
+        // Upload bulanan (12 bulan terakhir)
         $uploadPerMonth = Document::select(
             DB::raw("DATE_FORMAT(created_at, '%Y-%m') as month"),
             DB::raw('count(*) as total')
@@ -56,6 +55,7 @@ class DashboardController extends Controller
             ->take(12)
             ->get();
 
+        // Top 5 departemen
         $topDepartments = Document::select('department_id', DB::raw('count(*) as total'))
             ->groupBy('department_id')
             ->with('department')
@@ -63,16 +63,57 @@ class DashboardController extends Controller
             ->take(5)
             ->get();
 
+        // Top kategori
         $topKategori = Document::select('kategori', DB::raw('count(*) as total'))
             ->groupBy('kategori')
             ->orderBy('total', 'desc')
             ->take(5)
             ->get();
 
+        // Last updated
         $lastUpdated = Document::with('department')
             ->orderBy('updated_at', 'desc')
             ->take(5)
             ->get();
+
+        // ==================================================
+        //  TOTAL DOKUMEN PER DEPARTEMEN (untuk horizontal chart)
+        // ==================================================
+        $departmentTotals = Document::select('department_id', DB::raw('COUNT(*) as total'))
+            ->groupBy('department_id')
+            ->with('department')
+            ->get();
+
+        // ==================================================
+        //  TOTAL DOKUMEN PER DEPARTEMEN PER KATEGORI
+        // ==================================================
+        $deptCategoryCounts = Document::select(
+            'department_id',
+            'kategori',
+            DB::raw('COUNT(*) as total')
+        )
+            ->groupBy('department_id', 'kategori')
+            ->with('department')
+            ->get();
+
+
+        // Convert ke format mudah dipakai di Blade
+        $deptCategoryData = [];
+
+        foreach ($deptCategoryCounts as $row) {
+            $dept = $row->department->name ?? 'Unknown';
+
+            if (!isset($deptCategoryData[$dept])) {
+                $deptCategoryData[$dept] = [
+                    'SOP' => 0,
+                    'IK' => 0,
+                    'FORM' => 0,
+                    'STD' => 0,
+                ];
+            }
+
+            $deptCategoryData[$dept][$row->kategori] = $row->total;
+        }
 
         return view('dashboard.admin', [
             'categoryCount' => $categoryCount,
@@ -80,6 +121,8 @@ class DashboardController extends Controller
             'topDepartments' => $topDepartments,
             'topKategori' => $topKategori,
             'lastUpdated' => $lastUpdated,
+            'departmentTotals' => $departmentTotals,
+            'deptCategoryData' => $deptCategoryData,
         ]);
     }
 }

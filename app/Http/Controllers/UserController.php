@@ -99,12 +99,23 @@ class UserController extends Controller
             'name' => 'required',
             'role_id' => 'required',
             'department_id' => 'nullable',
+            'password' => 'nullable|min:6',
         ]);
 
-        $user->update($request->only(['name', 'role_id', 'department_id']));
+        $user->name = $request->name;
+        $user->role_id = $request->role_id;
+        $user->department_id = $request->department_id;
+
+        // Jika admin mengisi password baru → update
+        if ($request->password) {
+            $user->password = bcrypt($request->password);
+        }
+
+        $user->save();
 
         return redirect()->route('admin.users.index')->with('success', 'User berhasil diperbarui.');
     }
+
 
 
     public function destroy($id)
