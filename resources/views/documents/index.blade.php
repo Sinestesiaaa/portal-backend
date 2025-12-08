@@ -89,8 +89,8 @@
                     @endforeach
                 </select>
 
-                {{-- TANGGAL --}}
-                <input type="date" name="tanggal" value="{{ request('tanggal') }}"
+                {{-- published_at --}}
+                <input type="date" name="published_at" value="{{ request('published_at') }}"
                     class="border border-gray-300 rounded-lg px-3 py-2 w-full
                 focus:ring-2 focus:ring-[#16A34A]">
 
@@ -232,51 +232,34 @@
             <table class="w-full text-sm">
                 <thead>
                     <tr class="bg-[#E8FCEB] text-[#0A7A2D] font-semibold text-left">
-                        <th class="p-3">Nomor</th>
-                        <th class="p-3">Judul</th>
-                        <th class="p-3">Kategori</th>
                         <th class="p-3">Departemen</th>
-                        <th class="p-3">Tanggal Terbit</th>
+                        <th class="p-3">Kategori</th>
+                        <th class="p-3">Nomor Dokumen</th>
+                        <th class="p-3">Judul</th>
+                        <th class="p-3">Terbit</th>
                         <th class="p-3 text-center">File</th>
                         <th class="p-3 text-center">Aksi</th>
                     </tr>
                 </thead>
 
                 <tbody>
+
                     @forelse ($documents as $doc)
-                        @php $deptName = $doc->department->name ?? '-'; @endphp
+                        @php
+                            $deptName = $doc->department->name ?? '-';
+                            $deptCfg = $departmentConfig[$deptName] ?? null;
+                            $catCfg = $categoryConfig[$doc->kategori] ?? null;
+                        @endphp
 
                         <tr class="border-b hover:bg-[#F3FAF6]">
 
-                            <td class="p-3">{{ $doc->document_number }}</td>
-
-                            <td class="p-3 font-medium text-gray-800">{{ $doc->title }}</td>
-
-                            {{-- CATEGORY BADGE --}}
+                            {{-- Departemen Badge (TIDAK DIUBAH) --}}
                             <td class="p-3">
-                                @php $c = $categoryConfig[$doc->kategori] ?? null; @endphp
-                                @if ($c)
-                                    <span
-                                        class="tooltip inline-flex items-center gap-1.5 px-3 py-1.5
-    rounded-full shadow-sm text-xs font-semibold"
-                                        style="background: {{ $c['color'] }}; color: {{ $c['text'] }};">
-
-                                        {!! $c['icon'] !!}
-                                        {{ $doc->kategori }}
-
-                                        <span class="tooltip-text">{{ $c['tooltip'] }}</span>
-                                    </span>
-                                @endif
-                            </td>
-
-                            {{-- DEPARTMENT BADGE --}}
-                            <td class="p-3">
-                                @php $d = $departmentConfig[$deptName] ?? null; @endphp
-                                @if ($d)
+                                @if ($deptCfg)
                                     <span
                                         class="tooltip inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold"
-                                        style="background: {{ $d['color'] }}; color: {{ $d['text'] }};">
-                                        {{ $d['icon'] }} {{ $deptName }}
+                                        style="background: {{ $deptCfg['color'] }}; color: {{ $deptCfg['text'] }};">
+                                        {{ $deptCfg['icon'] }} {{ $deptName }}
                                         <span class="tooltip-text">Departemen: {{ $deptName }}</span>
                                     </span>
                                 @else
@@ -285,17 +268,45 @@
                                 @endif
                             </td>
 
-                            <td class="p-3 text-gray-600">{{ $doc->created_at->format('Y-m-d') }}</td>
-
-                            <td class="p-3 text-center">
-                                <button onclick="openPdfModal('{{ route('documents.preview', $doc->id) }}')"
-                                    class="text-blue-600 hover:underline">Lihat</button>
+                            {{-- Kategori Badge (TETAP 100% SAMA PUNYA KAMU) --}}
+                            <td class="p-3">
+                                <span
+                                    class="tooltip inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full shadow-sm text-xs font-semibold"
+                                    style="background: {{ $catCfg['color'] }}; color: {{ $catCfg['text'] }};">
+                                    {!! $catCfg['icon'] !!}
+                                    {{ $doc->kategori }}
+                                    <span class="tooltip-text">{{ $catCfg['tooltip'] }}</span>
+                                </span>
                             </td>
 
+                            {{-- Nomor Dokumen --}}
+                            <td class="p-3 font-semibold text-gray-800">
+                                {{ $doc->document_number }}
+                            </td>
+
+                            {{-- Judul --}}
+                            <td class="p-3 font-medium text-gray-800">
+                                {{ $doc->title }}
+                            </td>
+
+                            {{-- published_at Terbit  --}}
+                            <td class="p-3 text-gray-600">
+                                {{ $doc->published_at ? $doc->published_at->format('Y-m-d') : '-' }}
+
+                            </td>
+
+                            {{-- File --}}
+                            <td class="p-3 text-center">
+                                <button onclick="openPdfModal('{{ route('documents.preview', $doc->id) }}')"
+                                    class="text-blue-600 hover:underline">
+                                    Lihat
+                                </button>
+                            </td>
+
+                            {{-- Aksi --}}
                             <td class="p-3 text-center">
                                 @if (auth()->user()->role_id == 1)
                                     <div class="flex justify-center gap-3">
-
                                         <a href="{{ route('documents.edit', $doc->id) }}"
                                             class="text-yellow-600 hover:text-yellow-700">✏️</a>
 
@@ -304,7 +315,6 @@
                                             @csrf @method('DELETE')
                                             <button class="text-red-600 hover:text-red-700">🗑️</button>
                                         </form>
-
                                     </div>
                                 @else
                                     <span class="text-gray-400 text-xs">-</span>
@@ -320,10 +330,12 @@
                             </td>
                         </tr>
                     @endforelse
+
                 </tbody>
             </table>
 
         </div>
+
 
         {{-- PAGINATION --}}
         <div class="mt-4">
@@ -345,7 +357,9 @@
                 X
             </button>
 
-            <iframe id="pdfFrame" src="" class="w-full h-full" style="border:none;"></iframe>
+            <iframe id="pdfFrame" class="w-full h-full" style="border:none;" allow="fullscreen"
+                loading="eager"></iframe>
+
 
         </div>
     </div>

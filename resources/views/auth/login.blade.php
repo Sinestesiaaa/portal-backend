@@ -76,7 +76,7 @@
                             required>
 
                         <button type="button" onclick="togglePassword()"
-                            class="absolute right-3 top-3 text-gray-600 hover:text-gray-900">👁️</button>
+                            class="absolute right-3 top-3 text-gray-600 hover:text-gray-900"></button>
                     </div>
                 </div>
 

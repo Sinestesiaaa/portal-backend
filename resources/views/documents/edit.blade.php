@@ -69,6 +69,11 @@
                         <p class="text-red-600 text-sm">{{ $message }}</p>
                     @enderror
                 </div>
+                {{-- Tanggal Terbit --}}
+                <div><label class="block mb-2 font-semibold">Tanggal Terbit Dokumen</label>
+                    <input type="date" name="published_at" class="w-full border rounded-lg px-3 py-2"
+                        value="{{ old('published_at', $document->published_at ?? '') }}" required>
+                </div>
 
             </div>
 

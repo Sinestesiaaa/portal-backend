@@ -2,9 +2,7 @@
 
     <div class="max-w-7xl mx-auto px-6 py-10 space-y-10">
 
-        {{-- ===================================================== --}}
-        {{-- HEADER CORPORATE GREEN --}}
-        {{-- ===================================================== --}}
+        {{-- HEADER --}}
         <div class="p-8 rounded-2xl bg-gradient-to-r from-[#0AA03A] to-[#16A34A] shadow-lg text-white">
             <h1 class="text-3xl font-bold tracking-wide">
                 📊 Dashboard — {{ auth()->user()->department->name }}
@@ -13,9 +11,8 @@
         </div>
 
 
-
         {{-- ===================================================== --}}
-        {{-- STATISTICS CARDS --}}
+        {{-- STAT CARDS --}}
         {{-- ===================================================== --}}
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
 
@@ -31,7 +28,7 @@
                 </div>
             </div>
 
-            {{-- Per Kategori --}}
+            {{-- Per kategori --}}
             @foreach ($categoryCount as $kat => $total)
                 <div class="p-6 rounded-xl shadow-md border border-[#0AA03A]/20 bg-white flex items-center gap-4">
                     <div class="w-12 h-12 bg-[#0AA03A]/15 rounded-full flex items-center justify-center">
@@ -50,7 +47,7 @@
 
 
         {{-- ===================================================== --}}
-        {{-- CHART + RECENT UPDATES --}}
+        {{-- CHART + LAST UPDATES --}}
         {{-- ===================================================== --}}
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
 
@@ -66,20 +63,20 @@
             </div>
 
 
-            {{-- LAST UPDATED --}}
+            {{-- LAST CREATED DOCUMENTS --}}
             <div class="bg-white rounded-xl shadow-md border border-gray-200">
                 <div class="bg-[#0AA03A] text-white px-4 py-3 rounded-t-xl font-semibold">
-                    Update Terbaru
+                    Dokumen Terbaru
                 </div>
 
                 <div class="p-6 space-y-4">
-                    @foreach ($documents->take(6) as $doc)
+
+                    @forelse ($latestCreated as $doc)
                         <div
                             class="flex justify-between items-start p-3 bg-gray-50 rounded-lg border hover:bg-gray-100">
 
                             <div class="flex items-center gap-3">
-
-                                {{-- ICON --}}
+                                {{-- Icon --}}
                                 <div class="text-2xl">
                                     @switch($doc->kategori)
                                         @case('SOP')
@@ -104,64 +101,58 @@
                                 </div>
 
                                 <div>
-                                    <p class="font-semibold text-gray-800">
-                                        {{ $doc->document_number }}
-                                    </p>
-                                    <p class="text-xs text-gray-500 w-52 truncate">
-                                        {{ $doc->title }}
-                                    </p>
+                                    <p class="font-semibold text-gray-800">{{ $doc->document_number }}</p>
+                                    <p class="text-xs text-gray-500 w-52 truncate">{{ $doc->title }}</p>
                                 </div>
-
                             </div>
 
                             <span class="text-xs text-gray-500 whitespace-nowrap">
-                                {{ $doc->updated_at->diffForHumans() }}
+                                {{ $doc->created_at->diffForHumans() }}
                             </span>
 
                         </div>
-                    @endforeach
+                        @empty
+                            <p class="text-gray-500 text-sm">Belum ada dokumen.</p>
+                        @endforelse
+
+                    </div>
                 </div>
+
             </div>
 
         </div>
 
 
-    </div>
+        {{-- CHART SCRIPT --}}
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+        <script>
+            const labels = @json($categoryCount->keys());
+            const values = @json($categoryCount->values());
 
-
-    {{-- ===================================================== --}}
-    {{-- CHART SCRIPT --}}
-    {{-- ===================================================== --}}
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-    <script>
-        const labels = @json($categoryCount->keys());
-        const values = @json($categoryCount->values());
-
-        new Chart(document.getElementById('categoryBarChart'), {
-            type: 'bar',
-            data: {
-                labels,
-                datasets: [{
-                    data: values,
-                    backgroundColor: ['#000000', '#0AA03A', '#EA580C', '#2563EB'],
-                    borderRadius: 8,
-                }]
-            },
-            options: {
-                plugins: {
-                    legend: {
-                        display: false
-                    }
+            new Chart(document.getElementById('categoryBarChart'), {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: ['#000000', '#0AA03A', '#EA580C', '#2563EB'],
+                        borderRadius: 8,
+                    }]
                 },
-                scales: {
-                    y: {
-                        beginAtZero: true
+                options: {
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
                     }
                 }
-            }
-        });
-    </script>
+            });
+        </script>
 
-</x-app-layout>
+    </x-app-layout>
