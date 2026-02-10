@@ -22,10 +22,10 @@
     <div class="h-screen w-screen grid grid-cols-1 lg:grid-cols-2">
 
         {{-- LEFT PANEL (WHITE VERSION) --}}
-        <div class="bg-white text-gray-900 flex flex-col justify-center px-10 lg:px-20 relative">
+        <div class="bg-white text-gray-900 flex flex-col justify-center px-6 sm:px-10 lg:px-20 relative">
 
             {{-- Logo & Header --}}
-            <div class="absolute top-10 left-10 flex items-center gap-3">
+            <div class="hidden lg:flex absolute top-10 left-10 items-center gap-3">
                 <img src="/images/logo.png" class="h-12" alt="Logo PST">
                 <div>
                     <h1 class="text-xl font-bold tracking-wide">PT. PUTRA SARANA TRANSBORNEO</h1>
@@ -35,8 +35,18 @@
                 </div>
             </div>
 
+            <div class="lg:hidden mb-8 flex items-center gap-3">
+                <img src="/images/logo.png" class="h-10" alt="Logo PST">
+                <div>
+                    <h1 class="text-base font-bold tracking-wide">PT. PUTRA SARANA TRANSBORNEO</h1>
+                    <p class="text-gray-500 text-xs">
+                        Corporate Planning System Development
+                    </p>
+                </div>
+            </div>
+
             {{-- Title --}}
-            <div class="mt-24 lg:mt-40 mb-10">
+            <div class="mt-8 sm:mt-12 lg:mt-24 mb-6">
                 <h1 class="text-5xl lg:text-6xl font-extrabold text-[#0AA03A] leading-tight">
                     PORTAL<br>DOKUMEN
                 </h1>

@@ -67,27 +67,23 @@
             </form>
 
             {{-- ACTION BUTTONS --}}
-            <div class="flex justify-between items-center mt-5">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mt-5">
 
-                <div class="flex gap-2">
+                <div class="flex flex-col sm:flex-row gap-2">
                     <button type="submit" form="filterForm"
-                        class="bg-[#0AA03A] text-white px-5 py-2 rounded-lg shadow hover:bg-[#087C2D]">
+                        class="w-full sm:w-auto bg-[#0AA03A] text-white px-5 py-2 rounded-lg shadow hover:bg-[#087C2D]">
                         Filter
                     </button>
 
                     <a href="{{ route('admin.users.index') }}"
-                        class="bg-gray-300 px-5 py-2 rounded-lg shadow hover:bg-gray-400">
+                        class="w-full sm:w-auto bg-gray-300 px-5 py-2 rounded-lg shadow hover:bg-gray-400 text-center">
                         Reset
                     </a>
                 </div>
 
                 @if (auth()->user()->role_id == 1)
                     <a href="{{ route('admin.users.create') }}"
-                        class="flex items-center gap-2 bg-[#0AA03A] text-white px-5 py-2 rounded-lg shadow hover:bg-[#087C2D]">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
-                            stroke="white" class="w-5 h-5">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-                        </svg>
+                        class="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#0AA03A] text-white px-5 py-2 rounded-lg shadow hover:bg-[#087C2D]">
                         Tambah Pengguna
                     </a>
                 @endif
@@ -134,6 +130,7 @@
                         @php
                             $deptName = $user->department->name ?? '-';
                             $dept = $departmentConfig[$deptName] ?? null;
+                            $deptIcon = $user->department->icon ?? ($dept['icon'] ?? '🏢');
                         @endphp
 
                         <tr class="border-b hover:bg-[#F3FAF6]">
@@ -163,10 +160,11 @@
                                 @if ($dept)
                                     <span class="tag"
                                         style="background: {{ $dept['color'] }}; color: {{ $dept['text'] }};">
-                                        {{ $dept['icon'] }} {{ $deptName }}
+                                        {{ $deptIcon }} {{ $deptName }}
                                     </span>
                                 @else
-                                    <span class="tag bg-gray-200 text-gray-700">-</span>
+                                    <span class="tag bg-gray-200 text-gray-700">{{ $deptIcon }}
+                                        {{ $deptName }}</span>
                                 @endif
                             </td>
 
@@ -202,7 +200,7 @@
         {{-- MODAL DETAIL USER --}}
         <div id="userModal" class="fixed inset-0 bg-black/40 hidden justify-center items-center z-50">
 
-            <div class="bg-white w-96 p-6 rounded shadow-lg relative">
+            <div class="bg-white w-[92%] max-w-md p-6 rounded shadow-lg relative">
 
                 <button onclick="closeUserModal()" class="absolute top-2 right-3 text-red-500 font-bold">X</button>
 

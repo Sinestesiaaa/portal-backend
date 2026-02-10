@@ -1,0 +1,32 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class DocumentAudit extends Model
+{
+    use HasFactory;
+
+    protected $fillable = [
+        'document_id',
+        'user_id',
+        'action',
+        'meta',
+    ];
+
+    protected $casts = [
+        'meta' => 'array',
+    ];
+
+    public function document()
+    {
+        return $this->belongsTo(Document::class);
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+}

@@ -9,8 +9,8 @@
     <link rel="icon" type="image/png" href="/logo.png">
 </head>
 
-<body class="bg-gray-100">
-    <div class="min-h-screen flex items-center justify-center">
+<body class="bg-gray-100 text-gray-800">
+    <div class="min-h-screen flex items-center justify-center px-4 py-8">
         {{ $slot }}
     </div>
 </body>

@@ -57,12 +57,11 @@ class DashboardController extends Controller
             ->take(12)
             ->get();
 
-        // 3. Top 5 departemen
+        // 3. Semua departemen (urut paling aktif)
         $topDepartments = Document::select('department_id', DB::raw('COUNT(*) as total'))
             ->with('department')
             ->groupBy('department_id')
             ->orderBy('total', 'desc')
-            ->take(5)
             ->get();
 
         // 4. Top kategori

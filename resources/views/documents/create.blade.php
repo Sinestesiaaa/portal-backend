@@ -38,13 +38,14 @@
                 {{-- Kategori --}}
                 <div>
                     <label class="font-semibold text-gray-700">Kategori</label>
-                    <select name="kategori"
+                    <select name="kategori" id="kategoriSelect"
                         class="mt-1 w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-[#0AA03A]">
                         <option value="">Pilih kategori</option>
-                        <option value="SOP">SOP</option>
-                        <option value="IK">IK</option>
-                        <option value="FORM">FORM</option>
-                        <option value="STD">STD</option>
+                        @foreach ($documentTypes as $type)
+                            <option value="{{ $type->name }}" {{ old('kategori') == $type->name ? 'selected' : '' }}>
+                                {{ $type->name }}
+                            </option>
+                        @endforeach
                     </select>
                     @error('kategori')
                         <p class="text-red-600 text-sm">{{ $message }}</p>
@@ -64,10 +65,32 @@
                         <p class="text-red-600 text-sm">{{ $message }}</p>
                     @enderror
                 </div>
+                <div>
+                    <label class="font-semibold text-gray-700">Site (opsional)</label>
+                    <select name="site_id"
+                        class="mt-1 w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-[#0AA03A]">
+                        <option value="">Tanpa Site</option>
+                        @foreach ($sites as $site)
+                            <option value="{{ $site->id }}" {{ old('site_id') == $site->id ? 'selected' : '' }}>
+                                {{ $site->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('site_id')
+                        <p class="text-red-600 text-sm">{{ $message }}</p>
+                    @enderror
+                </div>
                 {{-- Tanggal Terbit --}}
                 <div><label class="block mb-2 font-semibold">Tanggal Terbit Dokumen</label>
                     <input type="date" name="published_at" class="w-full border rounded-lg px-3 py-2"
-                        value="{{ old('published_at', $document->published_at ?? '') }}" required>
+                        value="{{ old('published_at', now()->format('Y-m-d')) }}" required>
+                </div>
+
+                {{-- Review Berikutnya --}}
+                <div>
+                    <label class="block mb-2 font-semibold">Review Berikutnya (opsional)</label>
+                    <input type="date" name="review_date" class="w-full border rounded-lg px-3 py-2"
+                        value="{{ old('review_date') }}">
                 </div>
 
             </div>
@@ -76,7 +99,7 @@
             {{-- RIGHT SIDE — DROPZONE --}}
             <div class="bg-white p-6 rounded-xl shadow-md border">
 
-                <label class="font-semibold text-gray-700">Upload Dokumen (PDF)</label>
+                <label class="font-semibold text-gray-700" id="uploadLabel">Upload Dokumen (PDF)</label>
 
                 <div id="file-dropzone"
                     class="mt-3 dropzone border-2 border-dashed border-gray-300 rounded-xl p-5
@@ -89,11 +112,12 @@
                             d="M7 16c0 .88.39 1.67 1 2.22m0 0A3.001 3.001 0 0012 19a3.001 3.001 0 003-3 3.001 3.001 0 00-3-3 3.001 3.001 0 00-4 3m9 0H7" />
                     </svg>
 
-                    <p class="text-gray-600 font-medium">Drop PDF atau klik untuk upload</p>
+                    <p class="text-gray-600 font-medium" id="uploadHint">Drop PDF atau klik untuk upload</p>
                     <p class="text-gray-400 text-sm">Maksimal 50MB</p>
                 </div>
 
-                <input type="file" name="file" id="real-file-input" class="hidden" accept="application/pdf"
+                <input type="file" name="file" id="real-file-input" class="hidden"
+                    accept="application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                     required />
 
                 @error('file')
@@ -116,14 +140,28 @@
 
         </form>
 
+        {{-- FORM DESCRIPTION (OPTIONAL) --}}
+        <div id="form-description-wrapper"
+            class="mt-6 bg-white p-6 rounded-xl shadow-md border hidden">
+            <label class="font-semibold text-gray-700">Penjelasan Form (PDF, opsional)</label>
+            <input type="file" name="form_description" form="createForm"
+                class="mt-2 w-full border rounded-lg px-3 py-2"
+                accept="application/pdf" />
+            <p class="text-gray-400 text-sm mt-2">Khusus kategori FORM. Maksimal 50MB.</p>
+            @error('form_description')
+                <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+            @enderror
+        </div>
+
         {{-- BOTTOM BUTTONS --}}
-        <div class="flex justify-end gap-3 mt-6">
-            <a href="{{ route('documents.index') }}" class="px-5 py-2 bg-gray-300 rounded-lg hover:bg-gray-400">
+        <div class="flex flex-col sm:flex-row sm:justify-end gap-3 mt-6">
+            <a href="{{ route('documents.index') }}"
+                class="w-full sm:w-auto px-5 py-2 bg-gray-300 rounded-lg hover:bg-gray-400 text-center">
                 Batal
             </a>
 
             <button type="submit" form="createForm"
-                class="px-6 py-2 bg-[#0AA03A] text-white rounded-lg shadow hover:bg-[#087C2D]">
+                class="w-full sm:w-auto px-6 py-2 bg-[#0AA03A] text-white rounded-lg shadow hover:bg-[#087C2D]">
                 Simpan Dokumen
             </button>
         </div>
@@ -137,6 +175,10 @@
         const fileInput = document.getElementById('real-file-input');
         const preview = document.getElementById('file-preview');
         const previewName = document.getElementById('file-preview-name');
+        const kategoriSelect = document.getElementById('kategoriSelect');
+        const uploadLabel = document.getElementById('uploadLabel');
+        const uploadHint = document.getElementById('uploadHint');
+        const formDescWrapper = document.getElementById('form-description-wrapper');
 
         dz.addEventListener('click', () => fileInput.click());
 
@@ -171,6 +213,25 @@
             fileInput.value = '';
             preview.classList.add('hidden');
         }
+
+        function updateKategoriUI() {
+            const isForm = kategoriSelect.value === 'FORM';
+            if (isForm) {
+                uploadLabel.textContent = 'Upload Form (XLS/XLSX/DOC/DOCX)';
+                uploadHint.textContent = 'Drop file Excel/Word atau klik untuk upload';
+                fileInput.accept =
+                    'application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+                formDescWrapper.classList.remove('hidden');
+            } else {
+                uploadLabel.textContent = 'Upload Dokumen (PDF)';
+                uploadHint.textContent = 'Drop PDF atau klik untuk upload';
+                fileInput.accept = 'application/pdf';
+                formDescWrapper.classList.add('hidden');
+            }
+        }
+
+        kategoriSelect.addEventListener('change', updateKategoriUI);
+        updateKategoriUI();
     </script>
 
 </x-app-layout>

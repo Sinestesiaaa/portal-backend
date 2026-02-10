@@ -40,11 +40,12 @@
                 {{-- Kategori --}}
                 <div>
                     <label class="font-semibold text-gray-700">Kategori</label>
-                    <select name="kategori"
+                    <select name="kategori" id="kategoriSelect"
                         class="mt-1 w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-[#0AA03A]">
-                        @foreach (['SOP', 'IK', 'FORM', 'STD'] as $kat)
-                            <option value="{{ $kat }}" {{ $document->kategori == $kat ? 'selected' : '' }}>
-                                {{ $kat }}
+                        @foreach ($documentTypes as $type)
+                            <option value="{{ $type->name }}"
+                                {{ $document->kategori == $type->name ? 'selected' : '' }}>
+                                {{ $type->name }}
                             </option>
                         @endforeach
                     </select>
@@ -69,10 +70,59 @@
                         <p class="text-red-600 text-sm">{{ $message }}</p>
                     @enderror
                 </div>
+                <div>
+                    <label class="font-semibold text-gray-700">Site (opsional)</label>
+                    <select name="site_id"
+                        class="mt-1 w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-[#0AA03A]">
+                        <option value="">Tanpa Site</option>
+                        @foreach ($sites as $site)
+                            <option value="{{ $site->id }}"
+                                {{ old('site_id', $document->site_id) == $site->id ? 'selected' : '' }}>
+                                {{ $site->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('site_id')
+                        <p class="text-red-600 text-sm">{{ $message }}</p>
+                    @enderror
+                </div>
                 {{-- Tanggal Terbit --}}
                 <div><label class="block mb-2 font-semibold">Tanggal Terbit Dokumen</label>
                     <input type="date" name="published_at" class="w-full border rounded-lg px-3 py-2"
-                        value="{{ old('published_at', $document->published_at ?? '') }}" required>
+                        value="{{ old('published_at', $document->published_at?->format('Y-m-d') ?? '') }}" required>
+                </div>
+
+                {{-- Review Berikutnya --}}
+                <div>
+                    <label class="block mb-2 font-semibold">Review Berikutnya (opsional)</label>
+                    <input type="date" name="review_date" class="w-full border rounded-lg px-3 py-2"
+                        value="{{ old('review_date', $document->review_date?->format('Y-m-d') ?? '') }}">
+                </div>
+
+                {{-- REVISION --}}
+                <div class="border-t pt-4 space-y-3">
+                    <div class="flex items-center gap-2">
+                        <input type="checkbox" id="isRevision" name="is_revision" value="1"
+                            class="rounded border-gray-300">
+                        <label for="isRevision" class="font-semibold text-gray-700">
+                            Simpan sebagai revisi
+                        </label>
+                    </div>
+                    <p class="text-xs text-gray-500">Jika dicentang, wajib upload file baru dan isi catatan revisi.</p>
+
+                    <div id="revisionNoteWrapper" class="hidden">
+                        <label class="block mb-1 font-semibold text-gray-700">Revisi ke-</label>
+                        <input type="number" min="0" name="revision_number"
+                            value="{{ old('revision_number', $document->revision_number ?? 0) }}"
+                            class="w-full border rounded-lg px-3 py-2 mb-3">
+
+                        <label class="block mb-1 font-semibold text-gray-700">Catatan Revisi</label>
+                        <textarea name="revision_note" rows="3"
+                            class="w-full border rounded-lg px-3 py-2">{{ old('revision_note') }}</textarea>
+                        @error('revision_note')
+                            <p class="text-red-600 text-sm">{{ $message }}</p>
+                        @enderror
+                    </div>
                 </div>
 
             </div>
@@ -86,20 +136,35 @@
                     <label class="font-semibold text-gray-700">Preview Dokumen Saat Ini</label>
 
                     <div class="mt-3 border rounded-xl overflow-hidden shadow-sm">
-                        <iframe src="{{ route('documents.preview', $document->id) }}" class="w-full"
-                            style="height: 500px; border: none;"></iframe>
+                        @if ($document->kategori === 'FORM')
+                            @if ($document->form_description_path)
+                                <iframe src="{{ route('documents.preview_description', $document->id) }}"
+                                    class="w-full" style="height: 500px; border: none;"></iframe>
+                            @else
+                                <div class="p-4 text-sm text-gray-500">
+                                    Penjelasan form belum ada.
+                                </div>
+                            @endif
+                        @else
+                            <iframe src="{{ route('documents.preview', $document->id) }}" class="w-full"
+                                style="height: 500px; border: none;"></iframe>
+                        @endif
                     </div>
 
                     {{-- FILE INFO --}}
                     <p class="text-sm text-gray-500 mt-2">
-                        File: <span class="font-semibold">{{ basename($document->file_path) }}</span>
+                        @if ($document->kategori === 'FORM')
+                            Penjelasan: <span
+                                class="font-semibold">{{ $document->form_description_path ? basename($document->form_description_path) : '-' }}</span>
+                        @else
+                            File: <span class="font-semibold">{{ basename($document->file_path) }}</span>
+                        @endif
                     </p>
                 </div>
 
-
                 {{-- DROPZONE UNTUK REPLACE FILE --}}
                 <div>
-                    <label class="font-semibold text-gray-700">Ganti File (Opsional)</label>
+                    <label class="font-semibold text-gray-700" id="uploadLabel">Ganti File (Opsional)</label>
 
                     <div id="file-dropzone"
                         class="mt-3 dropzone border-2 border-dashed border-gray-300 rounded-xl p-5
@@ -112,11 +177,12 @@
                                 d="M7 16c0 .88.39 1.67 1 2.22m0 0A3.001 3.001 0 0012 19a3.001 3.001 0 003-3 3.001 3.001 0 00-3-3 3.001 3.001 0 00-4 3m9 0H7" />
                         </svg>
 
-                        <p class="text-gray-600 font-medium">Drop PDF atau klik untuk upload</p>
+                        <p class="text-gray-600 font-medium" id="uploadHint">Drop PDF atau klik untuk upload</p>
                         <p class="text-gray-400 text-sm">File baru (maksimal 50MB)</p>
                     </div>
 
-                    <input type="file" name="file" id="real-file-input" class="hidden" accept="application/pdf" />
+                    <input type="file" name="file" id="real-file-input" class="hidden"
+                        accept="application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
 
                     {{-- PREVIEW FILE NAME --}}
                     <div id="file-preview" class="mt-4 hidden">
@@ -138,15 +204,35 @@
 
         </form>
 
+        {{-- FORM DESCRIPTION (OPTIONAL) --}}
+        <div id="form-description-wrapper"
+            class="mt-6 bg-white p-6 rounded-xl shadow-md border hidden">
+            <label class="font-semibold text-gray-700">Ganti Penjelasan Form (PDF, opsional)</label>
+            <input type="file" name="form_description" form="editForm"
+                class="mt-2 w-full border rounded-lg px-3 py-2"
+                accept="application/pdf" />
+            <p class="text-gray-400 text-sm mt-2">Khusus kategori FORM. Maksimal 50MB.</p>
+            @error('form_description')
+                <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+            @enderror
+
+            <div class="mt-3 flex items-center gap-2">
+                <input type="checkbox" name="remove_form_description" value="1" form="editForm"
+                    class="rounded border-gray-300">
+                <span class="text-sm text-gray-700">Hapus penjelasan form</span>
+            </div>
+        </div>
+
 
         {{-- BOTTOM BUTTONS --}}
-        <div class="flex justify-end gap-3 mt-6">
-            <a href="{{ route('documents.index') }}" class="px-5 py-2 bg-gray-300 rounded-lg hover:bg-gray-400">
+        <div class="flex flex-col sm:flex-row sm:justify-end gap-3 mt-6">
+            <a href="{{ route('documents.index') }}"
+                class="w-full sm:w-auto px-5 py-2 bg-gray-300 rounded-lg hover:bg-gray-400 text-center">
                 Batal
             </a>
 
             <button type="submit" form="editForm"
-                class="px-6 py-2 bg-[#0AA03A] text-white rounded-lg shadow hover:bg-[#087C2D]">
+                class="w-full sm:w-auto px-6 py-2 bg-[#0AA03A] text-white rounded-lg shadow hover:bg-[#087C2D]">
                 Update Dokumen
             </button>
         </div>
@@ -160,6 +246,12 @@
         const fileInput = document.getElementById('real-file-input');
         const preview = document.getElementById('file-preview');
         const previewName = document.getElementById('file-preview-name');
+        const kategoriSelect = document.getElementById('kategoriSelect');
+        const uploadLabel = document.getElementById('uploadLabel');
+        const uploadHint = document.getElementById('uploadHint');
+        const formDescWrapper = document.getElementById('form-description-wrapper');
+        const isRevision = document.getElementById('isRevision');
+        const revisionNoteWrapper = document.getElementById('revisionNoteWrapper');
 
         dz.addEventListener('click', () => fileInput.click());
 
@@ -194,6 +286,36 @@
             fileInput.value = '';
             preview.classList.add('hidden');
         }
+
+        function updateKategoriUI() {
+            const isForm = kategoriSelect.value === 'FORM';
+            if (isForm) {
+                uploadLabel.textContent = 'Ganti Form (XLS/XLSX/DOC/DOCX) - Opsional';
+                uploadHint.textContent = 'Drop file Excel/Word atau klik untuk upload';
+                fileInput.accept =
+                    'application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+                formDescWrapper.classList.remove('hidden');
+            } else {
+                uploadLabel.textContent = 'Ganti File (Opsional)';
+                uploadHint.textContent = 'Drop PDF atau klik untuk upload';
+                fileInput.accept = 'application/pdf';
+                formDescWrapper.classList.add('hidden');
+            }
+        }
+
+        function updateRevisionUI() {
+            if (isRevision.checked) {
+                revisionNoteWrapper.classList.remove('hidden');
+            } else {
+                revisionNoteWrapper.classList.add('hidden');
+            }
+        }
+
+        kategoriSelect.addEventListener('change', updateKategoriUI);
+        updateKategoriUI();
+
+        isRevision.addEventListener('change', updateRevisionUI);
+        updateRevisionUI();
     </script>
 
 </x-app-layout>

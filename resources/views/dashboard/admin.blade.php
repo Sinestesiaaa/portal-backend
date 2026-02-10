@@ -3,8 +3,8 @@
     <div class="max-w-7xl mx-auto px-6 py-10 space-y-10">
 
         {{-- HEADER CARD --}}
-        <div class="p-8 rounded-2xl bg-gradient-to-r from-[#0AA03A] to-[#16A34A] shadow-lg text-white">
-            <h1 class="text-3xl font-bold tracking-wide">📊 Dashboard</h1>
+        <div class="p-6 sm:p-8 rounded-2xl bg-gradient-to-r from-[#0AA03A] to-[#16A34A] shadow-lg text-white">
+            <h1 class="text-2xl sm:text-3xl font-bold tracking-wide">📊 Dashboard</h1>
             <p class="text-white/90 text-sm">Ringkasan aktivitas dokumen perusahaan</p>
         </div>
 
@@ -31,7 +31,8 @@
 
             {{-- PER KATEGORI --}}
             @foreach ($categoryCount as $kat => $total)
-                <div class="p-6 rounded-xl shadow-md border border-[#0AA03A]/20 bg-white">
+                <a href="{{ route('documents.index', ['kategori' => $kat]) }}"
+                    class="p-6 rounded-xl shadow-md border border-[#0AA03A]/20 bg-white hover:bg-[#F3FAF6]">
                     <div class="flex items-center gap-4">
                         <div class="w-12 h-12 bg-[#0AA03A]/15 rounded-full flex items-center justify-center">
                             <span class="text-[#0AA03A] text-xl">📁</span>
@@ -41,7 +42,7 @@
                             <p class="text-3xl font-bold text-[#0AA03A]">{{ $total }}</p>
                         </div>
                     </div>
-                </div>
+                </a>
             @endforeach
 
         </div>
@@ -59,13 +60,13 @@
                     🏭 Departemen Paling Aktif
                 </div>
 
-                <div class="p-5 space-y-3">
+                <div class="p-5 space-y-3 max-h-[320px] overflow-y-auto pr-2">
                     @foreach ($topDepartments as $dept)
-                        <div
-                            class="flex justify-between items-center p-2 rounded-lg bg-[#E8FCEB] border border-[#B7EFC2]">
+                        <a href="{{ route('documents.index', ['department_id' => $dept->department_id]) }}"
+                            class="flex justify-between items-center p-2 rounded-lg bg-[#E8FCEB] border border-[#B7EFC2] hover:bg-[#D9F7E1]">
                             <span class="text-gray-800 text-sm">{{ $dept->department->name }}</span>
                             <span class="text-[#087C2D] font-semibold">{{ $dept->total }}</span>
-                        </div>
+                        </a>
                     @endforeach
                 </div>
             </div>
@@ -78,11 +79,11 @@
 
                 <div class="p-5 space-y-3">
                     @foreach ($topKategori as $kat)
-                        <div
-                            class="flex justify-between items-center p-2 rounded-lg bg-[#E8FCEB] border border-[#B7EFC2]">
+                        <a href="{{ route('documents.index', ['kategori' => $kat->kategori]) }}"
+                            class="flex justify-between items-center p-2 rounded-lg bg-[#E8FCEB] border border-[#B7EFC2] hover:bg-[#D9F7E1]">
                             <span class="text-gray-800 text-sm">{{ $kat->kategori }}</span>
                             <span class="text-[#087C2D] font-semibold">{{ $kat->total }}</span>
-                        </div>
+                        </a>
                     @endforeach
                 </div>
             </div>
@@ -95,13 +96,14 @@
 
                 <div class="p-5 space-y-3">
                     @forelse ($lastUpdated as $doc)
-                        <div class="flex justify-between items-center p-2 rounded-lg bg-gray-50 border border-gray-200">
+                        <a href="{{ route('documents.show', $doc->id) }}"
+                            class="flex justify-between items-center p-2 rounded-lg bg-gray-50 border border-gray-200 hover:bg-gray-100">
                             <div>
                                 <p class="font-semibold text-gray-800">{{ $doc->document_number }}</p>
                                 <p class="text-xs text-gray-500">{{ $doc->department->name }}</p>
                             </div>
                             <span class="text-gray-400 text-xs">{{ $doc->updated_at->diffForHumans() }}</span>
-                        </div>
+                        </a>
                     @empty
                         <p class="text-gray-500 text-sm">Belum ada update.</p>
                     @endforelse
@@ -192,7 +194,7 @@
                 labels: @json($categoryCount->keys()),
                 datasets: [{
                     data: @json($categoryCount->values()),
-                    backgroundColor: ['#0AA03A', '#16A34A', '#2563EB', '#FB923C']
+                    backgroundColor: ['#000000', '#EA580C', '#2563EB', '0AA03A']
                 }]
             },
             options: {
@@ -278,3 +280,5 @@
     </script>
 
 </x-app-layout>
+
+

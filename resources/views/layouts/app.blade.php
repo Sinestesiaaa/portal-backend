@@ -42,6 +42,37 @@
             {{ $slot }}
         </main>
     </div>
+
+    <script>
+        // Global confirmation for update/delete/logout
+        document.addEventListener('submit', function(e) {
+            const form = e.target;
+            if (!(form instanceof HTMLFormElement)) return;
+
+            // Skip if form already has its own confirm handler
+            if (form.getAttribute('onsubmit')) return;
+
+            const customMsg = form.getAttribute('data-confirm-message');
+            const methodField = form.querySelector('input[name="_method"]');
+            const method = methodField ? methodField.value.toUpperCase() : form.method.toUpperCase();
+            const action = form.getAttribute('action') || '';
+
+            let msg = null;
+            if (customMsg) {
+                msg = customMsg;
+            } else if (method === 'DELETE') {
+                msg = 'Yakin ingin menghapus data ini?';
+            } else if (method === 'PUT' || method === 'PATCH') {
+                msg = 'Simpan perubahan ini?';
+            } else if (action.endsWith('/logout')) {
+                msg = 'Yakin ingin logout?';
+            }
+
+            if (msg && !confirm(msg)) {
+                e.preventDefault();
+            }
+        }, true);
+    </script>
 </body>
 
 </html>

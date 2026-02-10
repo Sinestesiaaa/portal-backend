@@ -73,17 +73,17 @@
                 </p>
 
 
-                <div class="flex justify-end gap-3 mt-6">
+                <div class="flex flex-col sm:flex-row sm:justify-end gap-3 mt-6">
                     {{-- BATAL --}}
                     <a href="{{ route('admin.users.index') }}"
-                        class="px-5 py-2 rounded-lg border border-gray-300 text-gray-700
+                        class="w-full sm:w-auto px-5 py-2 rounded-lg border border-gray-300 text-gray-700
                bg-gray-100 hover:bg-gray-200 transition shadow-sm">
                         Batal
                     </a>
 
                     {{-- UPDATE --}}
                     <button type="submit"
-                        class="px-5 py-2 rounded-lg bg-[#0AA03A] text-white font-semibold shadow
+                        class="w-full sm:w-auto px-5 py-2 rounded-lg bg-[#0AA03A] text-white font-semibold shadow
                hover:bg-[#087C2D] transition">
                         Update Pengguna
                     </button>

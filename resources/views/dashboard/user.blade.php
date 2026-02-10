@@ -3,8 +3,8 @@
     <div class="max-w-7xl mx-auto px-6 py-10 space-y-10">
 
         {{-- HEADER --}}
-        <div class="p-8 rounded-2xl bg-gradient-to-r from-[#0AA03A] to-[#16A34A] shadow-lg text-white">
-            <h1 class="text-3xl font-bold tracking-wide">
+        <div class="p-6 sm:p-8 rounded-2xl bg-gradient-to-r from-[#0AA03A] to-[#16A34A] shadow-lg text-white">
+            <h1 class="text-2xl sm:text-3xl font-bold tracking-wide">
                 📊 Dashboard — {{ auth()->user()->department->name }}
             </h1>
             <p class="text-white/90 text-sm">Ringkasan aktivitas dokumen Anda</p>
@@ -73,7 +73,7 @@
 
                     @forelse ($latestCreated as $doc)
                         <div
-                            class="flex justify-between items-start p-3 bg-gray-50 rounded-lg border hover:bg-gray-100">
+                            class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 p-3 bg-gray-50 rounded-lg border hover:bg-gray-100">
 
                             <div class="flex items-center gap-3">
                                 {{-- Icon --}}
@@ -102,11 +102,11 @@
 
                                 <div>
                                     <p class="font-semibold text-gray-800">{{ $doc->document_number }}</p>
-                                    <p class="text-xs text-gray-500 w-52 truncate">{{ $doc->title }}</p>
+                                    <p class="text-xs text-gray-500 w-40 sm:w-52 truncate">{{ $doc->title }}</p>
                                 </div>
                             </div>
 
-                            <span class="text-xs text-gray-500 whitespace-nowrap">
+                            <span class="text-xs text-gray-500 sm:whitespace-nowrap">
                                 {{ $doc->created_at->diffForHumans() }}
                             </span>
 

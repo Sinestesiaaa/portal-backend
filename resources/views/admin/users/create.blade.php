@@ -110,17 +110,15 @@
                 </div>
 
                 {{-- BUTTONS --}}
-                <div class="flex justify-between mt-8">
-
+                <div class="flex flex-col sm:flex-row sm:justify-between gap-3 mt-8">
                     <a href="{{ route('admin.users.index') }}"
-                        class="px-6 py-2 bg-gray-300 rounded-lg hover:bg-gray-400 shadow">
+                        class="w-full sm:w-auto px-6 py-2 bg-gray-300 rounded-lg hover:bg-gray-400 shadow text-center">
                         Batal
                     </a>
 
-                    <button class="px-6 py-2 bg-[#0AA03A] text-white rounded-lg shadow hover:bg-[#087C2D]">
+                    <button class="w-full sm:w-auto px-6 py-2 bg-[#0AA03A] text-white rounded-lg shadow hover:bg-[#087C2D]">
                         Simpan Pengguna
                     </button>
-
                 </div>
 
             </form>
