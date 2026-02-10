@@ -24,14 +24,16 @@
                     class="text-gray-700 hover:text-green-700 font-medium">
                     Dokumen
                 </a>
-                <a href="{{ route('documents.review') }}"
-                    class="text-gray-700 hover:text-green-700 font-medium">
-                    Review
-                </a>
-                <a href="{{ route('documents.numbers') }}"
-                    class="text-gray-700 hover:text-green-700 font-medium">
-                    Nomor Dokumen
-                </a>
+                @can('document.manage')
+                    <a href="{{ route('documents.review') }}"
+                        class="text-gray-700 hover:text-green-700 font-medium">
+                        Review
+                    </a>
+                    <a href="{{ route('documents.numbers') }}"
+                        class="text-gray-700 hover:text-green-700 font-medium">
+                        Nomor Dokumen
+                    </a>
+                @endcan
 
                 @can('document.manage')
                     <a href="{{ route('documents.export_page') }}"
@@ -128,14 +130,16 @@
                     class="block px-3 py-2 rounded-md text-gray-700 hover:bg-gray-100 hover:text-green-700 font-medium">
                     Dokumen
                 </a>
-                <a href="{{ route('documents.review') }}"
-                    class="block px-3 py-2 rounded-md text-gray-700 hover:bg-gray-100 hover:text-green-700 font-medium">
-                    Review
-                </a>
-                <a href="{{ route('documents.numbers') }}"
-                    class="block px-3 py-2 rounded-md text-gray-700 hover:bg-gray-100 hover:text-green-700 font-medium">
-                    Nomor Dokumen
-                </a>
+                @can('document.manage')
+                    <a href="{{ route('documents.review') }}"
+                        class="block px-3 py-2 rounded-md text-gray-700 hover:bg-gray-100 hover:text-green-700 font-medium">
+                        Review
+                    </a>
+                    <a href="{{ route('documents.numbers') }}"
+                        class="block px-3 py-2 rounded-md text-gray-700 hover:bg-gray-100 hover:text-green-700 font-medium">
+                        Nomor Dokumen
+                    </a>
+                @endcan
                 @can('document.manage')
                     <a href="{{ route('documents.export_page') }}"
                         class="block px-3 py-2 rounded-md text-gray-700 hover:bg-gray-100 hover:text-green-700 font-medium">
