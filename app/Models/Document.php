@@ -2,48 +2,64 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Storage;
 
 class Document extends Model
 {
-    use HasFactory;
-
     protected $fillable = [
         'document_number',
-        'tanggal',
-        'kategori',
         'title',
-        'description',
+        'kategori',
         'department_id',
+        'site_id',
+        'published_at',
+        'review_date',
         'file_path',
+        'form_description_path',
+        'revision_number',
+        'previous_file_path',
+        'revision_note',
         'created_by',
     ];
 
-    /* ============================
-       RELATIONSHIPS
-    ============================= */
+    protected $casts = [
+        'published_at' => 'datetime',
+        'last_revision_at' => 'datetime',
+        'review_date' => 'date',
+    ];
 
-    // Relasi ke departemen
     public function department()
     {
         return $this->belongsTo(Department::class);
     }
 
-    // Relasi ke user yang membuat dokumen
+    public function site()
+    {
+        return $this->belongsTo(Site::class);
+    }
+
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    /* ============================
-       Helpers
-    ============================= */
-
-    // Helper untuk mendapatkan URL file
-    public function fileUrl()
+    public function revisions()
     {
-        return Storage::url($this->file_path);
+        return $this->hasMany(DocumentRevision::class)->orderBy('revision_number', 'desc');
+    }
+
+    public function audits()
+    {
+        return $this->hasMany(DocumentAudit::class)->orderBy('created_at', 'desc');
+    }
+
+    public function relatedDocuments()
+    {
+        return $this->belongsToMany(
+            self::class,
+            'document_relations',
+            'document_id',
+            'related_document_id'
+        );
     }
 }

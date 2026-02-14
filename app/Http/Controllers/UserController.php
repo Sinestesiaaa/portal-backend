@@ -8,11 +8,48 @@ use Illuminate\Http\Request;
 
 class UserController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $users = User::with(['department', 'role'])->get();
+        $query = User::with(['department']);
 
-        return view('admin.users.index', compact('users'));
+        // ==========================
+        // FILTERING
+        // ==========================
+
+        // Filter nama
+        if ($request->name) {
+            $query->where('name', 'LIKE', '%' . $request->name . '%');
+        }
+
+        // Filter role
+        if ($request->role_id) {
+            $query->where('role_id', $request->role_id);
+        }
+
+        // Filter departemen
+        if ($request->department_id) {
+            $query->where('department_id', $request->department_id);
+        }
+
+        // ==========================
+        // SORTING
+        // ==========================
+        $allowedSorts = ['name', 'email', 'role_id', 'department_id'];
+        $sort = $request->sort ?? 'name';
+        $order = $request->order ?? 'asc';
+
+        if (!in_array($sort, $allowedSorts)) $sort = 'name';
+        if (!in_array($order, ['asc', 'desc'])) $order = 'asc';
+
+        $query->orderBy($sort, $order);
+
+        // Pagination
+        $users = $query->paginate(10)->appends($request->all());
+
+        return view('admin.users.index', [
+            'users' => $users,
+            'departments' => Department::all(),
+        ]);
     }
 
 
@@ -21,6 +58,7 @@ class UserController extends Controller
         $departments = Department::all();
         return view('admin.users.create', compact('departments'));
     }
+
 
     public function store(Request $request)
     {
@@ -43,6 +81,7 @@ class UserController extends Controller
         return redirect()->route('admin.users.index')->with('success', 'User berhasil dibuat.');
     }
 
+
     public function edit($id)
     {
         $user = User::findOrFail($id);
@@ -50,6 +89,7 @@ class UserController extends Controller
 
         return view('admin.users.edit', compact('user', 'departments'));
     }
+
 
     public function update(Request $request, $id)
     {
@@ -59,12 +99,24 @@ class UserController extends Controller
             'name' => 'required',
             'role_id' => 'required',
             'department_id' => 'nullable',
+            'password' => 'nullable|min:6',
         ]);
 
-        $user->update($request->only(['name', 'role_id', 'department_id']));
+        $user->name = $request->name;
+        $user->role_id = $request->role_id;
+        $user->department_id = $request->department_id;
+
+        // Jika admin mengisi password baru → update
+        if ($request->password) {
+            $user->password = bcrypt($request->password);
+        }
+
+        $user->save();
 
         return redirect()->route('admin.users.index')->with('success', 'User berhasil diperbarui.');
     }
+
+
 
     public function destroy($id)
     {
