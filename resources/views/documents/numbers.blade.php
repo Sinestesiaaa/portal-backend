@@ -26,7 +26,7 @@
                     </select>
                 </div>
 
-                @canany(['isAdmin', 'isSuperUser'])
+                @if (auth()->user()->isAdmin() || auth()->user()->isSuperUser())
                     <div class="md:col-span-2">
                         <select name="department_id"
                             class="border border-gray-300 rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-[#16A34A]">
@@ -51,7 +51,7 @@
                             @endforeach
                         </select>
                     </div>
-                @endcanany
+                @endif
 
                 <div class="md:col-span-1">
                     <button class="w-full bg-[#0AA03A] text-white px-4 py-2 rounded-lg shadow hover:bg-[#087C2D]">
@@ -109,4 +109,3 @@
         <div class="mt-4">{{ $documents->links() }}</div>
     </div>
 </x-app-layout>
-

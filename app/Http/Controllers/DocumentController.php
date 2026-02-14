@@ -578,18 +578,39 @@ class DocumentController extends Controller
         if (!Gate::allows('document.view', $doc)) {
             abort(403);
         }
-        $path = storage_path('app/public/' . $doc->file_path);
-
-        if (!file_exists($path)) abort(404, 'File tidak ditemukan');
+        $path = $this->resolvePhysicalPath($doc->file_path);
+        if (!$path) {
+            abort(404, 'File tidak ditemukan');
+        }
 
         while (ob_get_level()) ob_end_clean();
 
-        header("Content-Type: application/pdf");
+        $mime = mime_content_type($path) ?: 'application/octet-stream';
+        header("Content-Type: " . $mime);
         header("Content-Length: " . filesize($path));
         header("Content-Disposition: inline; filename=\"" . basename($path) . "\"");
 
         readfile($path);
         exit;
+    }
+
+    /**
+     * FORCE DOWNLOAD FILE UTAMA DOKUMEN
+     */
+    public function download($id)
+    {
+        $doc = Document::findOrFail($id);
+        if (!Gate::allows('document.view', $doc)) {
+            abort(403);
+        }
+        $path = $this->resolvePhysicalPath($doc->file_path);
+        if (!$path) {
+            abort(404, 'File tidak ditemukan');
+        }
+        $ext = pathinfo($path, PATHINFO_EXTENSION);
+        $base = trim(($doc->document_number ?? '') . ' - ' . ($doc->title ?? ''));
+        $downloadName = $this->makeDownloadName($base, $ext);
+        return response()->download($path, $downloadName);
     }
 
     public function create()
@@ -1018,20 +1039,114 @@ class DocumentController extends Controller
         if (!Gate::allows('document.view', $doc)) {
             abort(403);
         }
-        $path = $doc->form_description_path
-            ? storage_path('app/public/' . $doc->form_description_path)
-            : null;
-
-        if (!$path || !file_exists($path)) abort(404, 'File tidak ditemukan');
+        $path = $this->resolvePhysicalPath($doc->form_description_path);
+        if (!$path) {
+            abort(404, 'File tidak ditemukan');
+        }
 
         while (ob_get_level()) ob_end_clean();
 
-        header("Content-Type: application/pdf");
+        $mime = mime_content_type($path) ?: 'application/pdf';
+        header("Content-Type: " . $mime);
         header("Content-Length: " . filesize($path));
         header("Content-Disposition: inline; filename=\"" . basename($path) . "\"");
 
         readfile($path);
         exit;
+    }
+
+    /**
+     * FORCE DOWNLOAD PDF PENJELASAN FORM
+     */
+    public function downloadDescription($id)
+    {
+        $doc = Document::findOrFail($id);
+        if (!Gate::allows('document.view', $doc)) {
+            abort(403);
+        }
+        $path = $this->resolvePhysicalPath($doc->form_description_path);
+        if (!$path) {
+            abort(404, 'File tidak ditemukan');
+        }
+        $ext = pathinfo($path, PATHINFO_EXTENSION);
+        $base = trim(($doc->document_number ?? '') . ' - ' . ($doc->title ?? '')) . ' - Penjelasan';
+        $downloadName = $this->makeDownloadName($base, $ext);
+        return response()->download($path, $downloadName);
+    }
+
+    private function resolvePhysicalPath(?string $relativePath): ?string
+    {
+        if (!$relativePath) {
+            return null;
+        }
+
+        $relativePath = trim($relativePath);
+        $relativePath = ltrim($relativePath, '/\\');
+        $normalized = str_replace('\\', '/', $relativePath);
+
+        // Jika tersimpan sebagai URL penuh, ambil path-nya saja.
+        if (preg_match('#^https?://#i', $normalized)) {
+            $urlPath = parse_url($normalized, PHP_URL_PATH);
+            if (is_string($urlPath) && $urlPath !== '') {
+                $normalized = ltrim($urlPath, '/');
+            }
+        }
+
+        // Jika sudah absolute path dan file ada, pakai langsung.
+        if (is_file($normalized)) {
+            return $normalized;
+        }
+        if (is_file($relativePath)) {
+            return $relativePath;
+        }
+
+        // Hilangkan prefix umum jika tersimpan tidak konsisten di DB.
+        $trimmed = preg_replace(
+            '#^(public_html/|portaldo/public_html/|storage/app/public/|public/storage/|storage/)#',
+            '',
+            $normalized
+        );
+        $trimmed = ltrim((string) $trimmed, '/');
+        $baseParent = dirname(base_path());
+        $altPublicHtml = $baseParent . DIRECTORY_SEPARATOR . 'public_html';
+
+        $candidates = [
+            storage_path('app/public/' . $trimmed),
+            storage_path('app/' . $trimmed),
+            public_path('storage/' . $trimmed),
+            public_path('storage/app/public/' . $trimmed),
+            $altPublicHtml . DIRECTORY_SEPARATOR . 'storage' . DIRECTORY_SEPARATOR . $trimmed,
+            $altPublicHtml . DIRECTORY_SEPARATOR . 'storage' . DIRECTORY_SEPARATOR . 'app' . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . $trimmed,
+            base_path('storage/app/public/' . $trimmed),
+            base_path('public/storage/' . $trimmed),
+        ];
+
+        foreach ($candidates as $fullPath) {
+            if (is_file($fullPath)) {
+                return $fullPath;
+            }
+        }
+
+        return null;
+    }
+
+    private function makeDownloadName(string $base, string $ext = ''): string
+    {
+        $base = trim($base);
+        $base = preg_replace('/[\\\\\\/:*?"<>|]+/', '-', $base);
+        $base = preg_replace('/\s+/', ' ', (string) $base);
+        $base = trim((string) $base, " .-_");
+
+        if ($base === '') {
+            $base = 'dokumen';
+        }
+
+        $ext = trim($ext);
+        if ($ext === '') {
+            return $base;
+        }
+
+        return $base . '.' . $ext;
     }
 }
 

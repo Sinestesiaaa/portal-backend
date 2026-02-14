@@ -79,7 +79,7 @@
                         class="border border-gray-300 rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-[#16A34A]">
                 </div>
 
-                @canany(['isAdmin', 'isSuperUser'])
+                @if (auth()->user()->isAdmin() || auth()->user()->isSuperUser())
                     <div class="md:col-span-2">
                         <select name="department_id"
                             class="border border-gray-300 rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-[#16A34A]">
@@ -103,7 +103,7 @@
                             @endforeach
                         </select>
                     </div>
-                @endcanany
+                @endif
 
                 <div class="md:col-span-1">
                     <button class="w-full bg-[#0AA03A] text-white px-4 py-2 rounded-lg shadow hover:bg-[#087C2D]">
@@ -163,7 +163,7 @@
                             <td class="p-3 text-gray-600">{{ $doc->published_at?->format('Y-m-d') ?? '-' }}</td>
                             <td class="p-3 text-center">
                                 @if ($doc->kategori === 'FORM')
-                                    <a href="{{ asset('storage/' . $doc->file_path) }}" target="_blank"
+                                    <a href="{{ route('documents.download', $doc->id) }}"
                                         class="text-blue-600 hover:underline">
                                         <span class="tooltip" aria-label="Unduh Formulir">
                                             <span>⬇️</span>
@@ -188,7 +188,7 @@
                                             <span class="tooltip-text">Lihat</span>
                                         </span>
                                     </button>
-                                    <a href="{{ asset('storage/' . $doc->file_path) }}"
+                                    <a href="{{ route('documents.download', $doc->id) }}"
                                         class="ml-2 text-blue-600 hover:underline">
                                         <span class="tooltip" aria-label="Unduh">
                                             <span>⬇️</span>

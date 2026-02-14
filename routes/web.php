@@ -33,9 +33,17 @@ Route::get('/documents/preview/{id}', [DocumentController::class, 'preview'])
     ->middleware('auth')
     ->name('documents.preview');
 
+Route::get('/documents/download/{id}', [DocumentController::class, 'download'])
+    ->middleware('auth')
+    ->name('documents.download');
+
 Route::get('/documents/preview-description/{id}', [DocumentController::class, 'previewDescription'])
     ->middleware('auth')
     ->name('documents.preview_description');
+
+Route::get('/documents/download-description/{id}', [DocumentController::class, 'downloadDescription'])
+    ->middleware('auth')
+    ->name('documents.download_description');
 
 // =====================================
 // DOCUMENT LIST (ALL ROLES)

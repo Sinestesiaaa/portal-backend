@@ -132,11 +132,11 @@
                 <div class="text-sm text-gray-600">
                     @if ($document->kategori === 'FORM')
                         Formulir:
-                        <a href="{{ asset('storage/' . $document->file_path) }}" target="_blank"
+                        <a href="{{ route('documents.download', $document->id) }}"
                             class="text-blue-600 hover:underline">Unduh</a>
                     @else
                         Dokumen:
-                        <a href="{{ asset('storage/' . $document->file_path) }}" target="_blank"
+                        <a href="{{ route('documents.download', $document->id) }}"
                             class="text-blue-600 hover:underline">Unduh</a>
                     @endif
                 </div>
@@ -183,7 +183,7 @@
                                     <td class="p-3">{{ $rel->department->name ?? '-' }}</td>
                                     <td class="p-3 text-center">
                                         @if ($rel->kategori === 'FORM')
-                                            <a href="{{ asset('storage/' . $rel->file_path) }}" target="_blank"
+                                            <a href="{{ route('documents.download', $rel->id) }}"
                                                 class="text-blue-600 hover:underline">
                                                 <span class="tooltip" aria-label="Unduh Formulir">
                                                     <span>⬇️</span>
@@ -208,7 +208,7 @@
                                                     <span class="tooltip-text">Lihat</span>
                                                 </span>
                                             </button>
-                                            <a href="{{ asset('storage/' . $rel->file_path) }}"
+                                            <a href="{{ route('documents.download', $rel->id) }}"
                                                 class="ml-2 text-blue-600 hover:underline">
                                                 <span class="tooltip" aria-label="Unduh">
                                                     <span>⬇️</span>
