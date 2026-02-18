@@ -12,6 +12,9 @@
             id="editForm" class="grid grid-cols-1 lg:grid-cols-2 gap-8">
             @csrf
             @method('PUT')
+            @foreach (($returnQuery ?? []) as $qKey => $qValue)
+                <input type="hidden" name="{{ $qKey }}" value="{{ $qValue }}">
+            @endforeach
 
             {{-- LEFT SIDE — FORM INPUT --}}
             <div class="bg-white p-6 rounded-xl shadow-md border space-y-5">
@@ -226,7 +229,7 @@
 
         {{-- BOTTOM BUTTONS --}}
         <div class="flex flex-col sm:flex-row sm:justify-end gap-3 mt-6">
-            <a href="{{ route('documents.index') }}"
+            <a href="{{ route('documents.index', $returnQuery ?? []) }}"
                 class="w-full sm:w-auto px-5 py-2 bg-gray-300 rounded-lg hover:bg-gray-400 text-center">
                 Batal
             </a>

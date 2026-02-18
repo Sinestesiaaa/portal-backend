@@ -5,7 +5,7 @@
         {{-- HEADER --}}
         <div class="p-6 sm:p-8 rounded-2xl bg-gradient-to-r from-[#0AA03A] to-[#16A34A] shadow-lg text-white">
             <h1 class="text-2xl sm:text-3xl font-bold tracking-wide">
-                📊 Dashboard — {{ auth()->user()->department->name }}
+                Dashboard — {{ auth()->user()->department->name }}
             </h1>
             <p class="text-white/90 text-sm">Ringkasan aktivitas dokumen Anda</p>
         </div>

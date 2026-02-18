@@ -11,8 +11,10 @@ use App\Models\Site;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Validation\Rule;
 
@@ -69,7 +71,13 @@ class DocumentController extends Controller
             $documents->where('site_id', $request->site_id);
         }
 
-        $perPage = 50;
+        $allowedPerPages = ['25', '50', '100', '200', 'all'];
+        $perPageRaw = (string) $request->query('per_page', '50');
+        if (!in_array($perPageRaw, $allowedPerPages, true)) {
+            $perPageRaw = '50';
+        }
+        $isAllDocs = $perPageRaw === 'all';
+        $perPage = $isAllDocs ? max(1, (clone $documents)->count()) : (int) $perPageRaw;
         $sort = $request->query('sort');
         $order = strtolower($request->query('order', 'asc')) === 'desc' ? 'desc' : 'asc';
         $allowedSorts = ['title', 'published_at', 'revision_number'];
@@ -99,7 +107,7 @@ class DocumentController extends Controller
             });
 
             // PAGINATION MANUAL
-            $page = request('page', 1);
+            $page = $isAllDocs ? 1 : (int) request('page', 1);
             $total = $documents->count();
 
             $documentsPage = $documents->slice(($page - 1) * $perPage, $perPage)->values();
@@ -525,6 +533,696 @@ class DocumentController extends Controller
     }
 
     /**
+     * PREVIEW EXPORT TEMPLATE PERUSAHAAN
+     */
+    public function exportTemplatePreview(Request $request)
+    {
+        Gate::authorize('document.manage');
+        $data = $this->buildTemplateExportData($request);
+        $user = Auth::user();
+
+        $departments = Department::query()
+            ->when($user->role_id == 3, function ($q) use ($user) {
+                $q->whereIn('id', array_filter([$user->department_id, Department::where('name', 'GENERAL')->value('id')]));
+            })
+            ->orderBy('name')
+            ->get();
+
+        $sites = Site::where('is_active', true)->orderBy('name')->get();
+
+        return view('documents.export_template_preview', array_merge($data, [
+            'departments' => $departments,
+            'sites' => $sites,
+        ]));
+    }
+
+    /**
+     * EXPORT TEMPLATE PERUSAHAAN (PDF)
+     */
+    public function exportTemplatePdf(Request $request)
+    {
+        Gate::authorize('document.manage');
+        $data = $this->buildTemplateExportData($request);
+        $headerDocNo = (string) ($data['meta']['header_doc_no'] ?? '');
+
+        $pdf = Pdf::loadView('documents.export_template_pdf', $data)
+            ->setPaper('a4', 'landscape');
+
+        $filename = $this->makeDownloadName(
+            $headerDocNo . ' - Daftar Induk Dokumen - ' . now()->format('Y-m-d'),
+            'pdf'
+        );
+
+        return $pdf->download($filename);
+    }
+
+    /**
+     * EXPORT GABUNGAN DASHBOARD + DAFTAR INDUK DOKUMEN (PDF)
+     */
+    public function exportDashboardTemplatePdf(Request $request)
+    {
+        Gate::authorize('document.manage');
+        $user = Auth::user();
+        $templateData = $this->buildTemplateExportData($request);
+
+        $docQuery = Document::with('department');
+        if ($user->role_id == 3) {
+            $docQuery->where('department_id', $user->department_id);
+        }
+
+        $dashboardCategoryCount = (clone $docQuery)
+            ->select('kategori', DB::raw('COUNT(*) as total'))
+            ->groupBy('kategori')
+            ->orderBy('kategori')
+            ->pluck('total', 'kategori');
+
+        $dashboardTopDepartments = (clone $docQuery)
+            ->select('department_id', DB::raw('COUNT(*) as total'))
+            ->with('department')
+            ->groupBy('department_id')
+            ->orderBy('total', 'desc')
+            ->get();
+        $deptCategoryCounts = (clone $docQuery)
+            ->select('department_id', 'kategori', DB::raw('COUNT(*) as total'))
+            ->with('department')
+            ->groupBy('department_id', 'kategori')
+            ->get();
+
+        $dashboardLatestUploaded = (clone $docQuery)
+            ->orderBy('created_at', 'desc')
+            ->take(15)
+            ->get();
+
+        $deptCategoryData = [];
+        foreach ($deptCategoryCounts as $row) {
+            $deptName = $row->department->name ?? 'Unknown';
+            if (!isset($deptCategoryData[$deptName])) {
+                $deptCategoryData[$deptName] = ['SOP' => 0, 'IK' => 0, 'FORM' => 0, 'STD' => 0];
+            }
+            $deptCategoryData[$deptName][$row->kategori] = (int) $row->total;
+        }
+
+        $topDepartmentNames = $dashboardTopDepartments->take(6)->map(fn($d) => $d->department->name ?? 'Unknown')->toArray();
+        $maxDeptScale = 1;
+        foreach ($topDepartmentNames as $deptName) {
+            if (!isset($deptCategoryData[$deptName])) {
+                continue;
+            }
+            $maxDeptScale = max($maxDeptScale, max($deptCategoryData[$deptName]));
+        }
+        $deptCategoryCharts = [];
+        foreach ($topDepartmentNames as $deptName) {
+            if (!isset($deptCategoryData[$deptName])) {
+                continue;
+            }
+            $deptCategoryCharts[] = [
+                'name' => $deptName,
+                'uri' => $this->makeDeptCategoryChartDataUri($deptName, $deptCategoryData[$deptName], $maxDeptScale),
+            ];
+        }
+
+        $categoryPieUri = $this->makePieChartDataUri(
+            $dashboardCategoryCount->keys()->toArray(),
+            $dashboardCategoryCount->values()->toArray(),
+            'Komposisi Kategori'
+        );
+        $departmentBarUri = $this->makeBarChartDataUri(
+            $dashboardTopDepartments->map(fn($d) => $d->department->name ?? '-')->toArray(),
+            $dashboardTopDepartments->pluck('total')->toArray(),
+            'Total Dokumen per Departemen'
+        );
+
+        $pdf = Pdf::loadView('documents.export_dashboard_template_pdf', array_merge($templateData, [
+            'generatedAt' => now(),
+            'dashboardTotalDocuments' => (clone $docQuery)->count(),
+            'dashboardCategoryCount' => $dashboardCategoryCount,
+            'dashboardTopDepartments' => $dashboardTopDepartments,
+            'dashboardLatestUploaded' => $dashboardLatestUploaded,
+            'categoryPieUri' => $categoryPieUri,
+            'departmentBarUri' => $departmentBarUri,
+            'deptCategoryCharts' => $deptCategoryCharts,
+        ]))->setPaper('a4', 'landscape');
+
+        $headerDocNo = (string) ($templateData['meta']['header_doc_no'] ?? 'PST/CPSD/F-006');
+        $filename = $this->makeDownloadName(
+            $headerDocNo . ' - Dashboard + Daftar Induk Dokumen - ' . now()->format('Y-m-d'),
+            'pdf'
+        );
+
+        return $pdf->download($filename);
+    }
+
+    /**
+     * EXPORT TEMPLATE PERUSAHAAN (XLSX)
+     */
+    public function exportTemplateXlsx(Request $request)
+    {
+        Gate::authorize('document.manage');
+        $data = $this->buildTemplateExportData($request);
+        $headerDocNo = (string) ($data['meta']['header_doc_no'] ?? '');
+
+        if (!class_exists(\ZipArchive::class)) {
+            return back()->with('error', 'Export XLSX membutuhkan ekstensi PHP ZIP. Aktifkan extension=zip di php.ini lalu restart server.');
+        }
+
+        $tmpFile = tempnam(sys_get_temp_dir(), 'exp_xlsx_');
+        if ($tmpFile === false) {
+            abort(500, 'Gagal menyiapkan file export.');
+        }
+        @unlink($tmpFile);
+        $xlsxPath = $tmpFile . '.xlsx';
+
+        $xmlEscape = fn($v) => htmlspecialchars((string) $v, ENT_XML1 | ENT_QUOTES, 'UTF-8');
+        $col = function (int $n): string {
+            $s = '';
+            while ($n > 0) {
+                $m = ($n - 1) % 26;
+                $s = chr(65 + $m) . $s;
+                $n = intdiv($n - 1, 26);
+            }
+            return $s;
+        };
+        $cell = function (int $c, int $r, $v, bool $numeric = false) use ($col, $xmlEscape): string {
+            $ref = $col($c) . $r;
+            if ($numeric && is_numeric($v)) {
+                return '<c r="' . $ref . '"><v>' . $v . '</v></c>';
+            }
+            return '<c r="' . $ref . '" t="inlineStr"><is><t>' . $xmlEscape($v) . '</t></is></c>';
+        };
+
+        $rowsXml = [];
+        $r = 1;
+        $rowsXml[] = '<row r="' . $r . '">' . $cell(1, $r, 'FORMULIR') . $cell(2, $r, 'DAFTAR INDUK DOKUMEN') . '</row>';
+        $r++;
+        $rowsXml[] = '<row r="' . $r . '">' . $cell(1, $r, 'PROJECT') . $cell(2, $r, $data['meta']['project']) . '</row>';
+        $r++;
+        $rowsXml[] = '<row r="' . $r . '">' . $cell(1, $r, 'TANGGAL UPDATE') . $cell(2, $r, $data['meta']['update_date']) . '</row>';
+        $r++;
+        $rowsXml[] = '<row r="' . $r . '">' .
+            $cell(1, $r, 'NO') .
+            $cell(2, $r, 'DEPT') .
+            $cell(3, $r, 'JENIS') .
+            $cell(4, $r, 'NOMOR DOKUMEN') .
+            $cell(5, $r, 'JUDUL DOKUMEN') .
+            $cell(6, $r, 'DEPARTEMEN TERKAIT') .
+            $cell(7, $r, 'ISSUED DATE') .
+            $cell(8, $r, 'REVISI 1') .
+            $cell(9, $r, 'REVISI 2') .
+            $cell(10, $r, 'REVISI 3') .
+            $cell(11, $r, 'REVISI 4') .
+            $cell(12, $r, 'REVISI 5') .
+            $cell(13, $r, 'LOKASI PENYIMPANAN') .
+            $cell(14, $r, 'REMARKS') .
+            '</row>';
+
+        foreach ($data['rows'] as $item) {
+            $r++;
+            $rowsXml[] = '<row r="' . $r . '">' .
+                $cell(1, $r, $item['no'], true) .
+                $cell(2, $r, $item['dept']) .
+                $cell(3, $r, $item['jenis']) .
+                $cell(4, $r, $item['nomor_dokumen']) .
+                $cell(5, $r, $item['judul_dokumen']) .
+                $cell(6, $r, $item['departemen_terkait']) .
+                $cell(7, $r, $item['issued_date']) .
+                $cell(8, $r, $item['revisi_1']) .
+                $cell(9, $r, $item['revisi_2']) .
+                $cell(10, $r, $item['revisi_3']) .
+                $cell(11, $r, $item['revisi_4']) .
+                $cell(12, $r, $item['revisi_5']) .
+                $cell(13, $r, $item['lokasi_penyimpanan']) .
+                $cell(14, $r, $item['remarks']) .
+                '</row>';
+        }
+
+        $sheetXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+            . '<sheetData>' . implode('', $rowsXml) . '</sheetData>'
+            . '</worksheet>';
+
+        $workbookXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '
+            . 'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+            . '<sheets><sheet name="Daftar Induk Dokumen" sheetId="1" r:id="rId1"/></sheets></workbook>';
+
+        $contentTypesXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+            . '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+            . '<Default Extension="xml" ContentType="application/xml"/>'
+            . '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+            . '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+            . '</Types>';
+
+        $relsXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            . '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'
+            . '</Relationships>';
+
+        $wbRelsXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            . '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>'
+            . '</Relationships>';
+
+        $zip = new \ZipArchive();
+        if ($zip->open($xlsxPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+            abort(500, 'Gagal membuat file XLSX.');
+        }
+        $zip->addFromString('[Content_Types].xml', $contentTypesXml);
+        $zip->addFromString('_rels/.rels', $relsXml);
+        $zip->addFromString('xl/workbook.xml', $workbookXml);
+        $zip->addFromString('xl/_rels/workbook.xml.rels', $wbRelsXml);
+        $zip->addFromString('xl/worksheets/sheet1.xml', $sheetXml);
+        $zip->close();
+
+        $filename = $this->makeDownloadName(
+            $headerDocNo . ' - Daftar Induk Dokumen - ' . now()->format('Y-m-d'),
+            'xlsx'
+        );
+
+        return response()->download($xlsxPath, $filename)->deleteFileAfterSend(true);
+    }
+
+    private function buildTemplateExportData(Request $request): array
+    {
+        $includeHo = filter_var($request->query('include_ho', '1'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+        $includeHo = $includeHo === null ? true : $includeHo;
+        $selectedDepartmentIds = collect((array) $request->query('department_ids', []))
+            ->map(fn($v) => (int) $v)
+            ->filter(fn($v) => $v > 0)
+            ->unique()
+            ->values()
+            ->all();
+        $selectedSiteIds = collect((array) $request->query('site_ids', []))
+            ->map(fn($v) => (int) $v)
+            ->filter(fn($v) => $v > 0)
+            ->unique()
+            ->values()
+            ->all();
+        $siteDepartmentMap = collect((array) $request->query('site_department_map', []))
+            ->mapWithKeys(function ($v, $k) {
+                $siteId = (int) $k;
+                if ($siteId <= 0) {
+                    return [];
+                }
+                $vals = collect((array) $v)
+                    ->map(fn($x) => (string) $x)
+                    ->filter(fn($x) => $x !== '')
+                    ->unique()
+                    ->values()
+                    ->all();
+                if (count($vals) === 0) {
+                    $vals = ['all'];
+                }
+                return [$siteId => $vals];
+            })
+            ->all();
+
+        $documents = $this->queryDocumentsForTemplateExport($request);
+
+        $rows = $documents->values()->map(function ($doc, $idx) {
+            $revDates = [];
+            for ($i = 1; $i <= 5; $i++) {
+                $rev = $doc->revisions->where('revision_number', $i)->sortByDesc('revised_at')->first();
+                $revDates[$i] = $rev?->revised_at?->format('Y-m-d') ?? '';
+            }
+
+            return [
+                'no' => $idx + 1,
+                'dept' => $doc->department->name ?? '-',
+                'jenis' => $doc->kategori ?? '-',
+                'nomor_dokumen' => $doc->document_number ?? '-',
+                'judul_dokumen' => $doc->title ?? '-',
+                'departemen_terkait' => '',
+                'issued_date' => $doc->published_at?->format('Y-m-d') ?? '-',
+                'revisi_1' => $revDates[1],
+                'revisi_2' => $revDates[2],
+                'revisi_3' => $revDates[3],
+                'revisi_4' => $revDates[4],
+                'revisi_5' => $revDates[5],
+                'lokasi_penyimpanan' => 'Portal Dokumen CPSD',
+                'remarks' => $doc->revision_note ?? '',
+            ];
+        });
+
+        $rowsPerPage = max(1, (int) $request->query('rows_per_page', 25));
+        $totalPages = max(1, (int) ceil(max(1, $rows->count()) / $rowsPerPage));
+
+        $project = trim((string) $request->query('project', ''));
+        $updateDate = trim((string) $request->query('update_date', ''));
+        if ($updateDate === '') {
+            $updateDate = now()->format('Y-m-d');
+        }
+        $updateDateDisplay = $updateDate;
+        try {
+            $updateDateDisplay = Carbon::parse($updateDate)->locale('id')->translatedFormat('l, d F Y');
+        } catch (\Throwable $e) {
+            // fallback tetap pakai nilai raw jika format tidak valid
+        }
+
+        $meta = [
+            'project' => $project,
+            'update_date' => $updateDate,
+            'update_date_display' => $updateDateDisplay,
+            'header_doc_no' => (string) $request->query('header_doc_no', 'PST/CPSD/F-006'),
+            'header_effective_date' => (string) $request->query('header_effective_date', '8 April 2025'),
+            'header_revision' => (string) $request->query('header_revision', '0'),
+            'header_page' => '1 dari ' . $totalPages,
+            'include_ho' => $includeHo,
+            'department_ids' => $selectedDepartmentIds,
+            'site_ids' => $selectedSiteIds,
+            'site_department_map' => $siteDepartmentMap,
+        ];
+
+        return [
+            'rows' => $rows,
+            'meta' => $meta,
+            'totalRows' => $rows->count(),
+            'rowsPerPage' => $rowsPerPage,
+            'totalPages' => $totalPages,
+        ];
+    }
+
+    private function queryDocumentsForTemplateExport(Request $request)
+    {
+        $user = Auth::user();
+        $includeHo = filter_var($request->query('include_ho', '1'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+        $includeHo = $includeHo === null ? true : $includeHo;
+        $selectedDepartmentIds = collect((array) $request->query('department_ids', []))
+            ->map(fn($v) => (int) $v)
+            ->filter(fn($v) => $v > 0)
+            ->unique()
+            ->values()
+            ->all();
+        $selectedSiteIds = collect((array) $request->query('site_ids', []))
+            ->map(fn($v) => (int) $v)
+            ->filter(fn($v) => $v > 0)
+            ->unique()
+            ->values()
+            ->all();
+        $siteDepartmentMap = collect((array) $request->query('site_department_map', []))
+            ->mapWithKeys(function ($v, $k) {
+                $siteId = (int) $k;
+                if ($siteId <= 0) {
+                    return [];
+                }
+                $vals = collect((array) $v)
+                    ->map(fn($x) => (string) $x)
+                    ->filter(fn($x) => $x !== '')
+                    ->unique()
+                    ->values()
+                    ->all();
+                if (count($vals) === 0) {
+                    $vals = ['all'];
+                }
+                return [$siteId => $vals];
+            })
+            ->all();
+
+        $documents = Document::with([
+            'department',
+            'site',
+            'revisions',
+            'relatedDocuments.department',
+        ]);
+
+        $generalDeptId = Department::where('name', 'GENERAL')->value('id');
+        $documentTypes = DocumentType::orderBy('sort_order')->orderBy('name')->get();
+
+        if ($user->role_id == 3) {
+            $documents->where(function ($q) use ($user, $generalDeptId) {
+                $q->where('department_id', $user->department_id);
+                if ($generalDeptId) {
+                    $q->orWhere('department_id', $generalDeptId);
+                }
+            });
+        }
+
+        if ($request->search) {
+            $documents->where(function ($q) use ($request) {
+                $q->where('title', 'LIKE', "%{$request->search}%")
+                    ->orWhere('document_number', 'LIKE', "%{$request->search}%");
+            });
+        }
+        if ($request->kategori) {
+            $documents->where('kategori', $request->kategori);
+        }
+        if ($request->published_start && $request->published_end) {
+            $documents->whereBetween('published_at', [$request->published_start, $request->published_end]);
+        } elseif ($request->published_start) {
+            $documents->whereDate('published_at', '>=', $request->published_start);
+        } elseif ($request->published_end) {
+            $documents->whereDate('published_at', '<=', $request->published_end);
+        }
+        if (in_array($user->role_id, [1, 2]) && $request->department_id) {
+            $documents->where('department_id', $request->department_id);
+        }
+        if ($request->site_id) {
+            $documents->where('site_id', $request->site_id);
+        }
+
+        $documents->where(function ($q) use ($includeHo, $selectedSiteIds, $siteDepartmentMap) {
+            if ($includeHo) {
+                $q->orWhereNull('site_id');
+            }
+            foreach ($selectedSiteIds as $siteId) {
+                $siteDeptSelections = (array) ($siteDepartmentMap[$siteId] ?? ['all']);
+                $q->orWhere(function ($qSite) use ($siteId, $siteDeptSelections) {
+                    $qSite->where('site_id', $siteId);
+                    $hasAll = in_array('all', array_map('strtolower', $siteDeptSelections), true);
+                    if (!$hasAll) {
+                        $deptIds = collect($siteDeptSelections)
+                            ->map(fn($x) => (int) $x)
+                            ->filter(fn($x) => $x > 0)
+                            ->values()
+                            ->all();
+                        if (count($deptIds) > 0) {
+                            $qSite->whereIn('department_id', $deptIds);
+                        }
+                    }
+                });
+            }
+        });
+
+        if (!$includeHo && count($selectedSiteIds) === 0) {
+            $documents->whereRaw('1 = 0');
+        }
+
+        if ($includeHo && count($selectedDepartmentIds) > 0) {
+            $documents->where(function ($q) use ($selectedDepartmentIds) {
+                $q->whereNotNull('site_id')
+                    ->orWhere(function ($qHo) use ($selectedDepartmentIds) {
+                        $qHo->whereNull('site_id')
+                            ->whereIn('department_id', $selectedDepartmentIds);
+                    });
+            });
+        }
+
+        $sort = $request->query('sort');
+        $order = strtolower($request->query('order', 'asc')) === 'desc' ? 'desc' : 'asc';
+        $allowedSorts = ['title', 'published_at', 'revision_number'];
+
+        if ($sort && in_array($sort, $allowedSorts)) {
+            return $documents->orderBy($sort, $order)->get();
+        }
+
+        $orderKategori = $documentTypes->pluck('name')->toArray();
+        return $documents->get()->sort(function ($a, $b) use ($orderKategori) {
+            $deptA = $a->department->name ?? '';
+            $deptB = $b->department->name ?? '';
+            if ($deptA !== $deptB) return strcmp($deptA, $deptB);
+            $katA = array_search($a->kategori, $orderKategori);
+            $katB = array_search($b->kategori, $orderKategori);
+            if ($katA === false) $katA = PHP_INT_MAX;
+            if ($katB === false) $katB = PHP_INT_MAX;
+            if ($katA !== $katB) return $katA <=> $katB;
+            return extractDocNumber($a->document_number) <=> extractDocNumber($b->document_number);
+        });
+    }
+
+    private function buildTemplateProjectName(bool $includeHo, array $departmentIds, array $siteIds): string
+    {
+        $user = Auth::user();
+        $sourceParts = [];
+        if ($includeHo) {
+            $sourceParts[] = 'Head Office';
+        }
+        $siteNames = Site::whereIn('id', $siteIds)->orderBy('name')->pluck('name')->all();
+        if (count($siteNames) > 0) {
+            $sourceParts[] = implode(', ', $siteNames);
+        }
+
+        if (count($sourceParts) === 0) {
+            $sourceParts[] = 'Head Office';
+        }
+
+        $accessibleDepartments = Department::query()
+            ->when($user && $user->role_id == 3, function ($q) use ($user) {
+                $q->whereIn('id', array_filter([
+                    $user->department_id,
+                    Department::where('name', 'GENERAL')->value('id'),
+                ]));
+            })
+            ->pluck('id')
+            ->unique()
+            ->values()
+            ->all();
+
+        $selectedDepartmentIds = array_values(array_unique(array_map('intval', $departmentIds)));
+        $allDepartmentsSelected = count($selectedDepartmentIds) === 0
+            || (count($accessibleDepartments) > 0
+                && count(array_diff($accessibleDepartments, $selectedDepartmentIds)) === 0);
+
+        $departmentNames = Department::whereIn('id', $departmentIds)->orderBy('name')->pluck('name')->all();
+        if ($includeHo && !$allDepartmentsSelected && count($departmentNames) > 0) {
+            return implode(' + ', $sourceParts) . ' - Dept: ' . implode(', ', $departmentNames);
+        }
+
+        return implode(' + ', $sourceParts);
+    }
+
+    private function makePieChartDataUri(array $labels, array $values, string $title = ''): string
+    {
+        $w = 620;
+        $h = 250;
+        $cx = 160;
+        $cy = 138;
+        $r = 76;
+        $innerR = 48;
+        $total = max(1, array_sum($values));
+        $colors = ['#0AA03A', '#EA580C', '#2563EB', '#111827', '#9333EA', '#14B8A6', '#F59E0B', '#EF4444'];
+        $start = -M_PI / 2;
+        $paths = '';
+        $legend = '';
+
+        foreach ($values as $i => $v) {
+            if ($v <= 0) {
+                continue;
+            }
+            $angle = ($v / $total) * 2 * M_PI;
+            $end = $start + $angle;
+            $x1 = $cx + $r * cos($start);
+            $y1 = $cy + $r * sin($start);
+            $x2 = $cx + $r * cos($end);
+            $y2 = $cy + $r * sin($end);
+            $largeArc = $angle > M_PI ? 1 : 0;
+            $color = $colors[$i % count($colors)];
+            $paths .= '<path d="M ' . $cx . ' ' . $cy . ' L ' . round($x1, 2) . ' ' . round($y1, 2) . ' A ' . $r . ' ' . $r . ' 0 ' . $largeArc . ' 1 ' . round($x2, 2) . ' ' . round($y2, 2) . ' Z" fill="' . $color . '" />';
+
+            $label = htmlspecialchars((string)($labels[$i] ?? '-'), ENT_QUOTES, 'UTF-8');
+            $legendY = 58 + ($i * 18);
+            $legend .= '<rect x="300" y="' . $legendY . '" width="10" height="10" rx="2" fill="' . $color . '" />';
+            $legend .= '<text x="315" y="' . ($legendY + 9) . '" font-size="10" fill="#111827">' . $label . ' (' . $v . ')</text>';
+            $start = $end;
+        }
+
+        $safeTitle = htmlspecialchars($title, ENT_QUOTES, 'UTF-8');
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' . $w . '" height="' . $h . '">'
+            . '<rect width="100%" height="100%" fill="#ffffff"/>'
+            . '<rect x="8" y="8" width="' . ($w - 16) . '" height="' . ($h - 16) . '" rx="8" fill="#ffffff" stroke="#e5e7eb"/>'
+            . '<text x="18" y="28" font-size="14" font-weight="700" fill="#111827">' . $safeTitle . '</text>'
+            . $paths
+            . '<circle cx="' . $cx . '" cy="' . $cy . '" r="' . $innerR . '" fill="#ffffff" stroke="#e5e7eb"/>'
+            . '<text x="' . $cx . '" y="' . ($cy - 4) . '" font-size="10" text-anchor="middle" fill="#64748b">Total</text>'
+            . '<text x="' . $cx . '" y="' . ($cy + 14) . '" font-size="18" font-weight="700" text-anchor="middle" fill="#0f172a">' . (int)$total . '</text>'
+            . $legend
+            . '</svg>';
+
+        return 'data:image/svg+xml;base64,' . base64_encode($svg);
+    }
+
+    private function makeBarChartDataUri(array $labels, array $values, string $title = ''): string
+    {
+        $w = 620;
+        $h = 250;
+        $left = 115;
+        $top = 52;
+        $chartW = 480;
+        $barH = 13;
+        $gap = 7;
+        $max = max(1, (int)max($values ?: [1]));
+
+        $grid = '';
+        for ($i = 0; $i <= 4; $i++) {
+            $x = $left + (int)round(($i / 4) * $chartW);
+            $tickVal = (int)round(($i / 4) * $max);
+            $grid .= '<line x1="' . $x . '" y1="' . ($top - 6) . '" x2="' . $x . '" y2="' . ($h - 20) . '" stroke="#e5e7eb" stroke-width="1"/>';
+            $grid .= '<text x="' . $x . '" y="' . ($h - 8) . '" font-size="8" text-anchor="middle" fill="#64748b">' . $tickVal . '</text>';
+        }
+
+        $bars = '';
+        foreach ($values as $i => $v) {
+            $y = $top + ($i * ($barH + $gap));
+            $width = (int)round(($v / $max) * $chartW);
+            $label = htmlspecialchars((string)($labels[$i] ?? '-'), ENT_QUOTES, 'UTF-8');
+            $bars .= '<text x="' . ($left - 8) . '" y="' . ($y + 10) . '" font-size="9" text-anchor="end" fill="#111827">' . $label . '</text>';
+            $bars .= '<rect x="' . $left . '" y="' . $y . '" width="' . $chartW . '" height="' . $barH . '" fill="#f1f5f9" />';
+            $bars .= '<rect x="' . $left . '" y="' . $y . '" width="' . max($width, 1) . '" height="' . $barH . '" fill="#0AA03A" />';
+            $valX = $left + $width + 5;
+            if ($valX > ($left + $chartW - 14)) {
+                $valX = $left + $chartW - 14;
+            }
+            $bars .= '<text x="' . $valX . '" y="' . ($y + 10) . '" font-size="8" fill="#0f172a">' . (int)$v . '</text>';
+        }
+
+        $safeTitle = htmlspecialchars($title, ENT_QUOTES, 'UTF-8');
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' . $w . '" height="' . $h . '">'
+            . '<rect width="100%" height="100%" fill="#ffffff"/>'
+            . '<rect x="8" y="8" width="' . ($w - 16) . '" height="' . ($h - 16) . '" rx="8" fill="#ffffff" stroke="#e5e7eb"/>'
+            . '<text x="18" y="28" font-size="14" font-weight="700" fill="#111827">' . $safeTitle . '</text>'
+            . $grid
+            . $bars
+            . '</svg>';
+
+        return 'data:image/svg+xml;base64,' . base64_encode($svg);
+    }
+
+    private function makeDeptCategoryChartDataUri(string $deptName, array $values, int $maxScale = 0): string
+    {
+        $labels = ['SOP', 'IK', 'FORM', 'STD'];
+        $series = [
+            (int)($values['SOP'] ?? 0),
+            (int)($values['IK'] ?? 0),
+            (int)($values['FORM'] ?? 0),
+            (int)($values['STD'] ?? 0),
+        ];
+
+        $w = 420;
+        $h = 168;
+        $left = 84;
+        $top = 38;
+        $chartW = 300;
+        $barH = 14;
+        $gap = 10;
+        $max = max(1, $maxScale > 0 ? $maxScale : max($series));
+        $colors = ['#EA580C', '#16A34A', '#111827', '#2563EB'];
+        $bars = '';
+
+        foreach ($series as $i => $val) {
+            $y = $top + ($i * ($barH + $gap));
+            $width = (int)round(($val / $max) * $chartW);
+            $bars .= '<text x="' . ($left - 8) . '" y="' . ($y + 11) . '" font-size="10" text-anchor="end" fill="#111827">' . $labels[$i] . '</text>';
+            $bars .= '<rect x="' . $left . '" y="' . $y . '" width="' . $chartW . '" height="' . $barH . '" fill="#f1f5f9" />';
+            $bars .= '<rect x="' . $left . '" y="' . $y . '" width="' . max($width, 1) . '" height="' . $barH . '" fill="' . $colors[$i] . '" />';
+            $valX = $left + $width + 5;
+            if ($valX > ($left + $chartW - 14)) {
+                $valX = $left + $chartW - 14;
+            }
+            $bars .= '<text x="' . $valX . '" y="' . ($y + 11) . '" font-size="9" fill="#0f172a">' . $val . '</text>';
+        }
+
+        $safeDept = htmlspecialchars($deptName, ENT_QUOTES, 'UTF-8');
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' . $w . '" height="' . $h . '">'
+            . '<rect width="100%" height="100%" fill="#ffffff"/>'
+            . '<rect x="2" y="2" width="' . ($w - 4) . '" height="' . ($h - 4) . '" rx="6" fill="#ffffff" stroke="#e5e7eb"/>'
+            . '<text x="10" y="20" font-size="12" font-weight="700" fill="#065f46">' . $safeDept . '</text>'
+            . '<text x="' . ($w - 10) . '" y="20" font-size="9" text-anchor="end" fill="#64748b">Skala max: ' . $max . '</text>'
+            . $bars
+            . '</svg>';
+
+        return 'data:image/svg+xml;base64,' . base64_encode($svg);
+    }
+
+    /**
      * AUTOCOMPLETE SEARCH
      */
     public function autocomplete(Request $request)
@@ -682,14 +1380,28 @@ class DocumentController extends Controller
         return redirect()->route('documents.index')->with('success', 'Dokumen berhasil dibuat.');
     }
 
-    public function edit($id)
+    public function edit(Request $request, $id)
     {
         Gate::authorize('document.manage');
+        $returnQuery = $request->only([
+            'search',
+            'kategori',
+            'published_start',
+            'published_end',
+            'department_id',
+            'site_id',
+            'sort',
+            'order',
+            'per_page',
+            'page',
+        ]);
+
         return view('documents.edit', [
             'document'    => Document::findOrFail($id),
             'departments' => Department::all(),
             'sites' => Site::orderBy('name')->get(),
             'documentTypes' => DocumentType::orderBy('sort_order')->orderBy('name')->get(),
+            'returnQuery' => array_filter($returnQuery, fn($v) => $v !== null && $v !== ''),
         ]);
     }
 
@@ -796,7 +1508,22 @@ class DocumentController extends Controller
             'meta' => $meta,
         ]);
 
-        return redirect()->route('documents.index')->with('success', 'Dokumen berhasil diperbarui.');
+        $returnQuery = $request->only([
+            'search',
+            'kategori',
+            'published_start',
+            'published_end',
+            'department_id',
+            'site_id',
+            'sort',
+            'order',
+            'per_page',
+            'page',
+        ]);
+
+        return redirect()
+            ->route('documents.index', array_filter($returnQuery, fn($v) => $v !== null && $v !== ''))
+            ->with('success', 'Dokumen berhasil diperbarui.');
     }
 
     public function destroy($id)
@@ -1028,6 +1755,88 @@ class DocumentController extends Controller
         return redirect()
             ->route('documents.show', $document->id)
             ->with('success', 'Relasi dokumen berhasil dihapus.');
+    }
+
+    public function deleteRevision($id, $revisionId)
+    {
+        Gate::authorize('document.manage');
+        if (!app()->environment('local')) {
+            abort(403, 'Aksi ini hanya diizinkan pada environment local.');
+        }
+
+        $doc = Document::findOrFail($id);
+        $revision = DocumentRevision::where('document_id', $doc->id)->findOrFail($revisionId);
+        $revision->delete();
+
+        $this->syncRevisionSummary($doc);
+
+        return back()->with('success', 'Riwayat revisi berhasil dihapus.');
+    }
+
+    public function editRevision($id, $revisionId)
+    {
+        Gate::authorize('document.manage');
+        $document = Document::findOrFail($id);
+        $revision = DocumentRevision::where('document_id', $document->id)->findOrFail($revisionId);
+
+        return view('documents.revisions.edit', [
+            'document' => $document,
+            'revision' => $revision,
+        ]);
+    }
+
+    public function updateRevision(Request $request, $id, $revisionId)
+    {
+        Gate::authorize('document.manage');
+        $document = Document::findOrFail($id);
+        $revision = DocumentRevision::where('document_id', $document->id)->findOrFail($revisionId);
+
+        $request->validate([
+            'revision_number' => 'required|integer|min:0',
+            'revision_note' => 'required|string',
+            'revised_at' => 'nullable|date',
+        ]);
+
+        $revision->update([
+            'revision_number' => (int) $request->revision_number,
+            'revision_note' => (string) $request->revision_note,
+            'revised_at' => $request->revised_at ? $request->revised_at : $revision->revised_at,
+            'revised_by' => Auth::id(),
+        ]);
+
+        $this->syncRevisionSummary($document);
+
+        DocumentAudit::create([
+            'document_id' => $document->id,
+            'user_id' => Auth::id(),
+            'action' => 'revision',
+            'meta' => [
+                'document_number' => $document->document_number,
+                'title' => $document->title,
+                'kategori' => $document->kategori,
+                'revision_number' => (int) $request->revision_number,
+                'revision_note' => (string) $request->revision_note,
+                'event' => 'revision_edit',
+            ],
+        ]);
+
+        return redirect()
+            ->route('documents.show', $document->id)
+            ->with('success', 'Riwayat revisi berhasil diperbarui.');
+    }
+
+    private function syncRevisionSummary(Document $doc): void
+    {
+        $latest = DocumentRevision::where('document_id', $doc->id)
+            ->orderBy('revision_number', 'desc')
+            ->orderBy('revised_at', 'desc')
+            ->first();
+
+        $doc->update([
+            'revision_number' => $latest?->revision_number ?? 0,
+            'revision_note' => $latest?->revision_note,
+            'last_revision_at' => $latest?->revised_at,
+        ]);
     }
 
     /**

@@ -17,6 +17,7 @@ class Document extends Model
         'file_path',
         'form_description_path',
         'revision_number',
+        'last_revision_at',
         'previous_file_path',
         'revision_note',
         'created_by',

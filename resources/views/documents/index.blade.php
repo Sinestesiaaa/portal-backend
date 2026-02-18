@@ -51,6 +51,32 @@
             background: #E8FCEB;
         }
 
+        .data-table th,
+        .data-table td {
+            vertical-align: middle;
+        }
+
+        .action-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 30px;
+            height: 30px;
+            border-radius: 8px;
+            transition: background-color 0.15s ease;
+        }
+
+        .action-icon:hover {
+            background: #eef2f7;
+        }
+
+        .title-cell {
+            max-width: 360px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
     </style>
 @endpush
 
@@ -138,6 +164,19 @@
                         </select>
                     </div>
                 @endif
+
+                {{-- JUMLAH DATA PER HALAMAN --}}
+                <div class="md:col-span-2">
+                    <select name="per_page"
+                        class="border border-gray-300 rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-[#16A34A]">
+                        @foreach ([25, 50, 100, 200, 'all'] as $size)
+                            <option value="{{ $size }}"
+                                {{ (string) request('per_page', '50') === (string) $size ? 'selected' : '' }}>
+                                {{ $size === 'all' ? 'ALL DOCUMENT' : $size . ' / halaman' }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
 
                 {{-- BUTTON FILTER --}}
                 <div class="md:col-span-1">
@@ -254,7 +293,7 @@
             $emptyColspan = auth()->user()->can('document.manage') ? 9 : 8;
         @endphp
         <div class="bg-white p-5 rounded-xl shadow-lg border overflow-x-auto">
-            <table class="w-full text-sm table-sticky">
+            <table class="w-full text-sm table-sticky data-table">
                 <thead>
                     <tr class="bg-[#E8FCEB] text-[#0A7A2D] font-semibold text-left">
                         <th class="p-3">Departemen</th>
@@ -326,22 +365,21 @@
                                     {{ $doc->document_number }}
                                 </a>
                             </td>
-                            <td class="p-3 font-medium text-gray-800">
-                                <a href="{{ route('documents.show', $doc->id) }}" class="text-black hover:underline">
+                            <td class="p-3 font-medium text-gray-800 title-cell">
+                                <a href="{{ route('documents.show', $doc->id) }}" class="text-black hover:underline block"
+                                    title="{{ $doc->title }}">
                                     {{ $doc->title }}
                                 </a>
                             </td>
                             <td class="p-3 text-center text-gray-700">
                                 <div>Rev. {{ $doc->revision_number ?? 0 }}</div>
-                                <div class="text-xs text-gray-500">
-                                    {{ $doc->last_revision_at?->format('Y-m-d') ?? '' }}
-                                </div>
                             </td>
-                            <td class="p-3 text-gray-600">{{ $doc->published_at?->format('Y-m-d') ?? '-' }}</td>
+                            <td class="p-3 text-gray-600 whitespace-nowrap">{{ $doc->published_at?->format('Y-m-d') ?? '-' }}</td>
                             <td class="p-3 text-center">
+                                <div class="flex items-center justify-center gap-1">
                                 @if ($doc->kategori === 'FORM')
                                     <a href="{{ route('documents.download', $doc->id) }}"
-                                        class="text-blue-600 hover:underline">
+                                        class="text-blue-600 action-icon">
                                         <span class="tooltip" aria-label="Unduh Formulir">
                                             <span>⬇️</span>
                                             <span class="tooltip-text">Unduh Formulir</span>
@@ -350,7 +388,7 @@
                                     @if ($doc->form_description_path)
                                         <button
                                             onclick="openPdfModal('{{ route('documents.preview_description', $doc->id) }}')"
-                                            class="text-blue-600 hover:underline ml-2">
+                                            class="text-blue-600 action-icon">
                                             <span class="tooltip" aria-label="Lihat Penjelasan">
                                                 <span>👁️</span>
                                                 <span class="tooltip-text">Lihat Penjelasan</span>
@@ -359,27 +397,27 @@
                                     @endif
                                 @else
                                     <button onclick="openPdfModal('{{ route('documents.preview', $doc->id) }}')"
-                                        class="text-blue-600 hover:underline">
+                                        class="text-blue-600 action-icon">
                                         <span class="tooltip" aria-label="Lihat">
                                             <span>👁️</span>
                                             <span class="tooltip-text">Lihat</span>
                                         </span>
                                     </button>
                                     <a href="{{ route('documents.download', $doc->id) }}"
-                                        class="ml-2 text-blue-600 hover:underline">
+                                        class="text-blue-600 action-icon">
                                         <span class="tooltip" aria-label="Unduh">
                                             <span>⬇️</span>
                                             <span class="tooltip-text">Unduh</span>
                                         </span>
                                     </a>
                                 @endif
-
+                                </div>
                             </td>
                             @can('document.manage')
                                 <td class="p-3 text-center">
                                     <div class="flex justify-center gap-3">
-                                        <a href="{{ route('documents.edit', $doc->id) }}"
-                                            class="text-yellow-600 hover:text-yellow-700">
+                                        <a href="{{ route('documents.edit', array_merge(['id' => $doc->id], request()->only(['search', 'kategori', 'published_start', 'published_end', 'department_id', 'site_id', 'sort', 'order', 'per_page', 'page']))) }}"
+                                            class="text-yellow-600 hover:text-yellow-700 action-icon">
                                             <span class="tooltip" aria-label="Edit">
                                                 <span>✏️</span>
                                                 <span class="tooltip-text">Edit</span>
@@ -389,7 +427,7 @@
                                             onsubmit="return confirm('Hapus dokumen ini?')">
                                             @csrf
                                             @method('DELETE')
-                                            <button class="text-red-600 hover:text-red-700">
+                                            <button class="text-red-600 hover:text-red-700 action-icon">
                                                 <span class="tooltip" aria-label="Hapus">
                                                     <span>🗑️</span>
                                                     <span class="tooltip-text">Hapus</span>
@@ -410,17 +448,38 @@
         </div>
 
         {{-- PAGINATION --}}
-        <div class="mt-4">{{ $documents->links() }}</div>
+        <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div class="text-sm text-gray-600">
+                Halaman {{ $documents->currentPage() }} dari {{ $documents->lastPage() }}.
+                Menampilkan {{ $documents->firstItem() ?? 0 }}-{{ $documents->lastItem() ?? 0 }}
+                dari {{ $documents->total() }} dokumen.
+            </div>
+            <div>{{ $documents->onEachSide(1)->links('vendor.pagination.cpsd') }}</div>
+            <form method="GET" class="flex items-center gap-2">
+                @foreach (request()->except('page') as $qKey => $qValue)
+                    <input type="hidden" name="{{ $qKey }}" value="{{ $qValue }}">
+                @endforeach
+                <label for="goto-page" class="text-sm text-gray-600">Ke halaman</label>
+                <input id="goto-page" type="number" name="page" min="1" max="{{ $documents->lastPage() }}"
+                    value="{{ $documents->currentPage() }}"
+                    class="w-20 border border-gray-300 rounded-lg px-2 py-1 text-sm">
+                <button type="submit"
+                    class="px-3 py-1.5 text-sm bg-gray-200 rounded-lg hover:bg-gray-300">Go</button>
+            </form>
+        </div>
 
     </div>
 
     {{-- PDF MODAL --}}
     <div id="pdfModal"
         class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 flex items-center justify-center">
-        <div class="relative bg-white rounded-xl shadow-2xl overflow-hidden w-[92%] max-w-6xl h-[92%] flex flex-col">
-            <button onclick="closePdfModal()"
-                class="absolute top-3 right-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-full px-4 py-1 shadow">X</button>
-            <iframe id="pdfFrame" class="w-full h-full" style="border:none;" allow="fullscreen"
+        <div class="bg-white rounded-xl shadow-2xl overflow-hidden w-[98%] max-w-[1700px] h-[96vh] flex flex-col">
+            <div class="flex items-center justify-between p-4 border-b">
+                <h3 class="font-semibold text-gray-800">Preview Dokumen</h3>
+                <button type="button" onclick="closePdfModal()"
+                    class="bg-red-600 hover:bg-red-700 text-white font-bold rounded-full px-3 py-1 shadow">X</button>
+            </div>
+            <iframe id="pdfFrame" class="w-full flex-1" style="border:none;" allow="fullscreen"
                 loading="eager"></iframe>
         </div>
     </div>

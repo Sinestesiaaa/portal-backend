@@ -151,7 +151,8 @@
                                 </a>
                             </td>
                             <td class="p-3 font-medium text-gray-800">
-                                <a href="{{ route('documents.show', $doc->id) }}" class="text-black hover:underline">
+                                <a href="{{ route('documents.show', $doc->id) }}" class="text-black hover:underline"
+                                    title="{{ $doc->title }}">
                                     {{ $doc->title }}
                                 </a>
                             </td>

@@ -90,7 +90,7 @@
                                     {{ $doc->document_number }}
                                 </a>
                             </td>
-                            <td class="p-3">{{ $doc->title }}</td>
+                            <td class="p-3" title="{{ $doc->title }}">{{ $doc->title }}</td>
                             <td class="p-3">{{ $doc->kategori }}</td>
                             <td class="p-3">{{ $doc->department->name ?? '-' }}</td>
                             <td class="p-3">{{ $doc->site->name ?? '-' }}</td>

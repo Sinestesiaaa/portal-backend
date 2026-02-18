@@ -3,8 +3,8 @@
     <div class="max-w-7xl mx-auto px-6 py-10 space-y-6">
 
         <div class="bg-gradient-to-r from-[#0AA03A] to-[#16A34A] text-white p-6 rounded-xl shadow-md">
-            <h1 class="text-2xl font-bold tracking-wide">📤 Export Dokumen</h1>
-            <p class="text-white/90 text-sm">Export dokumen berdasarkan filter atau pilihan</p>
+            <h1 class="text-2xl font-bold tracking-wide">Export Dokumen</h1>
+            <p class="text-white/90 text-sm">Export Detail dan Dafar Induk Dokumen</p>
         </div>
 
         @if (session('success'))
@@ -18,7 +18,7 @@
             $currentSort = request('sort');
             $currentOrder = request('order', 'asc');
             $nextOrder = $currentOrder === 'asc' ? 'desc' : 'asc';
-            $sortIcon = fn($col) => $currentSort === $col ? ($currentOrder === 'asc' ? '▲' : '▼') : '';
+            $sortIcon = fn($col) => $currentSort === $col ? ($currentOrder === 'asc' ? '^' : 'v') : '';
             $exportColumns = [
                 'department' => 'Departemen',
                 'site' => 'Site',
@@ -34,8 +34,15 @@
             $selectedColumns = request('columns', array_keys($exportColumns));
         @endphp
 
-        <div class="bg-white p-5 rounded-xl shadow-md border">
+        <div class="bg-white p-6 rounded-xl shadow-md border">
+            <div class="mb-4">
+                <h2 class="text-lg font-semibold text-gray-900">Export Detail List Dokumen</h2>
+                <p class="text-sm text-gray-500">1) Filter dokumen, 2) Cek preview tabel, lalu export CSV/PDF.</p>
+            </div>
             <form method="GET" class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                <div class="md:col-span-12">
+                    <h2 class="text-sm font-semibold text-gray-800">Filter Dokumen</h2>
+                </div>
                 <div class="md:col-span-3">
                     <input type="text" name="search" value="{{ request('search') }}"
                         placeholder="🔍 Cari dokumen..."
@@ -47,7 +54,8 @@
                         class="border border-gray-300 rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-[#16A34A]">
                         <option value="">Kategori</option>
                         @foreach ($documentTypes as $type)
-                            <option value="{{ $type->name }}" {{ request('kategori') == $type->name ? 'selected' : '' }}>
+                            <option value="{{ $type->name }}"
+                                {{ request('kategori') == $type->name ? 'selected' : '' }}>
                                 {{ $type->name }}
                             </option>
                         @endforeach
@@ -79,7 +87,8 @@
                         class="border border-gray-300 rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-[#16A34A]">
                         <option value="">Site</option>
                         @foreach ($sites as $site)
-                            <option value="{{ $site->id }}" {{ request('site_id') == $site->id ? 'selected' : '' }}>
+                            <option value="{{ $site->id }}"
+                                {{ request('site_id') == $site->id ? 'selected' : '' }}>
                                 {{ $site->name }}
                             </option>
                         @endforeach
@@ -98,9 +107,12 @@
                     </a>
                 </div>
 
-                <div class="md:col-span-12 mt-3">
+                <div class="md:col-span-12 mt-4">
                     <div class="bg-gray-50 border rounded-lg p-4">
-                        <label class="text-sm font-semibold text-gray-700">Kolom yang diexport</label>
+                        <div class="mb-3">
+                            <p class="text-xs text-gray-500">Pilih kolom yang ingin ditampilkan di preview dan file
+                                export.</p>
+                        </div>
                         <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
                             @foreach ($exportColumns as $key => $label)
                                 <label class="inline-flex items-center gap-2 text-sm text-gray-700">
@@ -114,55 +126,58 @@
                     </div>
                 </div>
 
-                <div class="md:col-span-12 mt-3">
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div class="md:col-span-12 mt-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                        <button type="button" id="openPreviewModalBtn"
+                            class="w-full min-h-[46px] flex items-center justify-center bg-[#0AA03A] text-white px-5 py-3 rounded-lg shadow hover:bg-[#087C2D]">
+                            Lihat Preview Export
+                        </button>
                         <a href="{{ route('documents.export_csv', request()->query()) }}"
-                            class="w-full flex items-center justify-center bg-white border border-[#0AA03A] text-[#0AA03A] px-5 py-3 rounded-lg shadow hover:bg-[#E8FCEB]">
+                            class="w-full min-h-[46px] flex items-center justify-center bg-white border border-[#0AA03A] text-[#0AA03A] px-5 py-3 rounded-lg shadow hover:bg-[#E8FCEB]">
                             Export CSV (Filter)
                         </a>
                         <a href="{{ route('documents.export_pdf', request()->query()) }}"
-                            class="w-full flex items-center justify-center bg-white border border-[#0AA03A] text-[#0AA03A] px-5 py-3 rounded-lg shadow hover:bg-[#E8FCEB]">
+                            class="w-full min-h-[46px] flex items-center justify-center bg-white border border-[#0AA03A] text-[#0AA03A] px-5 py-3 rounded-lg shadow hover:bg-[#E8FCEB]">
                             Export PDF (Filter)
                         </a>
                         <a href="{{ route('documents.index') }}"
-                            class="w-full flex items-center justify-center bg-[#0AA03A] text-white px-5 py-3 rounded-lg shadow hover:bg-[#087C2D]">
+                            class="w-full min-h-[46px] flex items-center justify-center bg-gray-600 text-white px-5 py-3 rounded-lg shadow hover:bg-gray-700">
                             Kembali ke List
                         </a>
                     </div>
                 </div>
 
-                <div class="md:col-span-12 mt-3">
+                <div class="md:col-span-12 mt-4">
                     <div class="bg-white p-4 rounded-xl shadow-sm border">
-                        <div class="text-sm font-semibold text-gray-700 mb-3">Export cepat</div>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-                            <select id="exportDeptCsv"
-                                class="border border-gray-300 rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-[#16A34A]">
-                                <option value="">Export CSV Departemen...</option>
-                                @foreach ($departments as $dept)
-                                    <option value="{{ $dept->id }}">{{ $dept->name }}</option>
-                                @endforeach
-                            </select>
-                            <select id="exportDeptPdf"
-                                class="border border-gray-300 rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-[#16A34A]">
-                                <option value="">Export PDF Departemen...</option>
-                                @foreach ($departments as $dept)
-                                    <option value="{{ $dept->id }}">{{ $dept->name }}</option>
-                                @endforeach
-                            </select>
-                            <select id="exportCatCsv"
-                                class="border border-gray-300 rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-[#16A34A]">
-                                <option value="">Export CSV Kategori...</option>
-                                @foreach ($documentTypes as $type)
-                                    <option value="{{ $type->name }}">{{ $type->name }}</option>
-                                @endforeach
-                            </select>
-                            <select id="exportCatPdf"
-                                class="border border-gray-300 rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-[#16A34A]">
-                                <option value="">Export PDF Kategori...</option>
-                                @foreach ($documentTypes as $type)
-                                    <option value="{{ $type->name }}">{{ $type->name }}</option>
-                                @endforeach
-                            </select>
+                        <div class="text-sm font-semibold text-gray-700 mb-3">Daftar Induk Dokumen</div>
+                        <p class="text-xs text-gray-500 mb-3">Pengaturan dokumen (project/scope/tanggal/header) dikelola
+                            di halaman Preview Daftar Induk.</p>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <a href="{{ route('documents.export_template_preview', request()->except(['project', 'update_date', 'header_doc_no', 'header_effective_date', 'header_revision', 'include_ho', 'department_ids', 'site_ids', 'site_department_map'])) }}"
+                                class="w-full min-h-[44px] flex items-center justify-center bg-[#0AA03A] text-white px-4 py-2 rounded-lg shadow hover:bg-[#087C2D]">
+                                Buka Preview & Pengaturan
+                            </a>
+                            <a href="{{ route('documents.index') }}"
+                                class="w-full min-h-[44px] flex items-center justify-center bg-gray-100 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg shadow hover:bg-gray-200">
+                                Kembali ke Daftar Dokumen
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="md:col-span-12 mt-4">
+                    <div class="bg-white p-4 rounded-xl shadow-sm border">
+                        <div class="text-sm font-semibold text-gray-700 mb-3">Export Dashboard</div>
+                        <p class="text-xs text-gray-500 mb-3">Export dashboard saja atau gabungan dashboard + daftar induk dokumen dalam 1 file PDF.</p>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <a href="{{ route('dashboard.export_pdf') }}"
+                                class="w-full min-h-[44px] inline-flex items-center justify-center bg-[#0AA03A] text-white px-4 py-2 rounded-lg shadow hover:bg-[#087C2D]">
+                                Export Dashboard PDF
+                            </a>
+                            <a href="{{ route('documents.export_dashboard_template_pdf', request()->except(['columns'])) }}"
+                                class="w-full min-h-[44px] inline-flex items-center justify-center bg-white border border-[#0AA03A] text-[#0AA03A] px-4 py-2 rounded-lg shadow hover:bg-[#E8FCEB]">
+                                Export Dashboard + Daftar Induk
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -181,7 +196,8 @@
             @endif
             @if (request('site_id'))
                 <span class="px-2 py-1 bg-gray-100 rounded">
-                    Site: {{ optional($sites->firstWhere('id', (int) request('site_id')))->name ?? request('site_id') }}
+                    Site:
+                    {{ optional($sites->firstWhere('id', (int) request('site_id')))->name ?? request('site_id') }}
                 </span>
             @endif
             @if (request('published_start') || request('published_end'))
@@ -201,7 +217,8 @@
                     disabled>
                     Export CSV Terpilih
                 </button>
-                <span class="text-xs text-gray-500">Pilih dokumen dari tabel di bawah.</span>
+                <span class="text-xs text-gray-500">Pilih dokumen dari tabel di bawah. Terpilih: <b
+                        id="selectedCount">0</b></span>
             </form>
 
             <form id="tableForm" action="{{ route('documents.export_selected') }}" method="POST">
@@ -247,118 +264,204 @@
                                 <td class="p-3">{{ $doc->site->name ?? '-' }}</td>
                                 <td class="p-3">{{ $doc->kategori }}</td>
                                 <td class="p-3">{{ $doc->document_number }}</td>
-                                <td class="p-3">{{ $doc->title }}</td>
+                                <td class="p-3" title="{{ $doc->title }}">{{ $doc->title }}</td>
                                 <td class="p-3 text-center">Rev. {{ $doc->revision_number ?? 0 }}</td>
                                 <td class="p-3">{{ $doc->published_at?->format('Y-m-d') ?? '-' }}</td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="8" class="p-3 text-center text-gray-500">Tidak ada dokumen ditemukan.</td>
+                                <td colspan="8" class="p-3 text-center text-gray-500">Tidak ada dokumen ditemukan.
+                                </td>
                             </tr>
                         @endforelse
                     </tbody>
                 </table>
             </form>
         </div>
-
         <div class="mt-4">{{ $documents->links() }}</div>
-    </div>
 
-    <script>
-        const baseQuery = @json(request()->query());
-        function goExport(route, params) {
-            const qs = new URLSearchParams(Object.assign({}, baseQuery, params));
-            window.location.href = route + '?' + qs.toString();
-        }
+        <div id="previewExportModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4">
+            <div class="w-full max-w-7xl bg-white rounded-xl shadow-2xl border overflow-hidden">
+                <div class="px-5 py-4 border-b flex items-center justify-between">
+                    <div>
+                        <h2 class="text-lg font-semibold text-gray-800">Preview Export</h2>
+                        <p class="text-xs text-gray-500">Preview menampilkan data halaman ini
+                            ({{ $documents->count() }} baris).</p>
+                    </div>
+                    <button type="button" id="closePreviewModalBtn"
+                        class="px-3 py-1 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200">Tutup</button>
+                </div>
 
-        const exportDeptCsv = document.getElementById('exportDeptCsv');
-        const exportDeptPdf = document.getElementById('exportDeptPdf');
-        const exportCatCsv = document.getElementById('exportCatCsv');
-        const exportCatPdf = document.getElementById('exportCatPdf');
-        if (exportDeptCsv) {
-            exportDeptCsv.addEventListener('change', function() {
-                if (this.value) goExport('{{ route('documents.export_csv') }}', {
-                    department_id: this.value
+                <div class="px-5 py-3 border-b">
+                    <div class="flex flex-wrap gap-2 text-xs">
+                        @foreach ($selectedColumns as $col)
+                            <span class="px-2 py-1 bg-gray-100 rounded">{{ $exportColumns[$col] ?? $col }}</span>
+                        @endforeach
+                    </div>
+                </div>
+
+                <div class="p-5 overflow-auto max-h-[70vh]">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="bg-[#E8FCEB] text-black font-semibold text-left">
+                                @foreach ($selectedColumns as $col)
+                                    <th class="p-3">{{ $exportColumns[$col] ?? $col }}</th>
+                                @endforeach
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse ($documents as $doc)
+                                <tr class="border-b hover:bg-[#F3FAF6]">
+                                    @foreach ($selectedColumns as $col)
+                                        <td class="p-3">
+                                            @switch($col)
+                                                @case('department')
+                                                    {{ $doc->department->name ?? '-' }}
+                                                @break
+
+                                                @case('site')
+                                                    {{ $doc->site->name ?? '-' }}
+                                                @break
+
+                                                @case('kategori')
+                                                    {{ $doc->kategori }}
+                                                @break
+
+                                                @case('document_number')
+                                                    {{ $doc->document_number }}
+                                                @break
+
+                                                @case('title')
+                                                    <span title="{{ $doc->title }}">{{ $doc->title }}</span>
+                                                @break
+
+                                                @case('revision_number')
+                                                    Rev. {{ $doc->revision_number ?? 0 }}
+                                                @break
+
+                                                @case('last_revision_at')
+                                                    {{ $doc->last_revision_at?->format('Y-m-d') ?? '-' }}
+                                                @break
+
+                                                @case('published_at')
+                                                    {{ $doc->published_at?->format('Y-m-d') ?? '-' }}
+                                                @break
+
+                                                @case('review_date')
+                                                    {{ $doc->review_date?->format('Y-m-d') ?? '-' }}
+                                                @break
+
+                                                @case('file_path')
+                                                    {{ $doc->file_path }}
+                                                @break
+
+                                                @default
+                                                    -
+                                            @endswitch
+                                        </td>
+                                    @endforeach
+                                </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="{{ max(count($selectedColumns), 1) }}"
+                                            class="p-3 text-center text-gray-500">Tidak ada data untuk preview.</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <script>
+                const bulkBtn = document.getElementById('bulkExportBtn');
+                const tableForm = document.getElementById('tableForm');
+                const bulkForm = document.getElementById('bulkExportForm');
+                const checkAll = document.getElementById('checkAll');
+                const rowChecks = document.querySelectorAll('.row-check');
+                const openPreviewModalBtn = document.getElementById('openPreviewModalBtn');
+                const closePreviewModalBtn = document.getElementById('closePreviewModalBtn');
+                const previewExportModal = document.getElementById('previewExportModal');
+
+                function syncBulkButton() {
+                    const anyChecked = Array.from(rowChecks).some(c => c.checked);
+                    const selected = Array.from(rowChecks).filter(c => c.checked).length;
+                    if (bulkBtn) bulkBtn.disabled = !anyChecked;
+                    const selectedCount = document.getElementById('selectedCount');
+                    if (selectedCount) selectedCount.textContent = selected;
+                }
+
+                if (checkAll) {
+                    checkAll.addEventListener('change', function() {
+                        rowChecks.forEach(c => (c.checked = this.checked));
+                        syncBulkButton();
+                    });
+                }
+
+                rowChecks.forEach(c => c.addEventListener('change', syncBulkButton));
+
+                if (bulkForm && tableForm) {
+                    bulkForm.addEventListener('submit', function(e) {
+                        e.preventDefault();
+                        syncColumnsToForms();
+                        tableForm.submit();
+                    });
+                }
+
+                function syncColumnsToForms() {
+                    const cols = Array.from(document.querySelectorAll('input[name="columns[]"]:checked'))
+                        .map(c => c.value);
+                    const forms = [bulkForm, tableForm];
+                    forms.forEach(f => {
+                        if (!f) return;
+                        f.querySelectorAll('input[name="columns[]"]').forEach(el => el.remove());
+                        cols.forEach(c => {
+                            const input = document.createElement('input');
+                            input.type = 'hidden';
+                            input.name = 'columns[]';
+                            input.value = c;
+                            f.appendChild(input);
+                        });
+                    });
+                }
+
+                // ensure export links include current columns
+                document.querySelectorAll('input[name="columns[]"]').forEach(c => {
+                    c.addEventListener('change', function() {
+                        const qs = new URLSearchParams(new FormData(this.closest('form')));
+                        const csvLink = document.querySelector('a[href^="{{ route('documents.export_csv') }}"]');
+                        const pdfLink = document.querySelector('a[href^="{{ route('documents.export_pdf') }}"]');
+                        if (csvLink) csvLink.href = "{{ route('documents.export_csv') }}" + "?" + qs.toString();
+                        if (pdfLink) pdfLink.href = "{{ route('documents.export_pdf') }}" + "?" + qs.toString();
+                    });
                 });
-            });
-        }
-        if (exportDeptPdf) {
-            exportDeptPdf.addEventListener('change', function() {
-                if (this.value) goExport('{{ route('documents.export_pdf') }}', {
-                    department_id: this.value
+
+                function openPreviewModal() {
+                    if (!previewExportModal) return;
+                    previewExportModal.classList.remove('hidden');
+                    previewExportModal.classList.add('flex');
+                }
+
+                function closePreviewModal() {
+                    if (!previewExportModal) return;
+                    previewExportModal.classList.add('hidden');
+                    previewExportModal.classList.remove('flex');
+                }
+
+                if (openPreviewModalBtn) {
+                    openPreviewModalBtn.addEventListener('click', openPreviewModal);
+                }
+                if (closePreviewModalBtn) {
+                    closePreviewModalBtn.addEventListener('click', closePreviewModal);
+                }
+                if (previewExportModal) {
+                    previewExportModal.addEventListener('click', function(e) {
+                        if (e.target === previewExportModal) closePreviewModal();
+                    });
+                }
+                document.addEventListener('keydown', function(e) {
+                    if (e.key === 'Escape') closePreviewModal();
                 });
-            });
-        }
-        if (exportCatCsv) {
-            exportCatCsv.addEventListener('change', function() {
-                if (this.value) goExport('{{ route('documents.export_csv') }}', {
-                    kategori: this.value
-                });
-            });
-        }
-        if (exportCatPdf) {
-            exportCatPdf.addEventListener('change', function() {
-                if (this.value) goExport('{{ route('documents.export_pdf') }}', {
-                    kategori: this.value
-                });
-            });
-        }
+            </script>
 
-        const bulkBtn = document.getElementById('bulkExportBtn');
-        const tableForm = document.getElementById('tableForm');
-        const bulkForm = document.getElementById('bulkExportForm');
-        const checkAll = document.getElementById('checkAll');
-        const rowChecks = document.querySelectorAll('.row-check');
-
-        function syncBulkButton() {
-            const anyChecked = Array.from(rowChecks).some(c => c.checked);
-            if (bulkBtn) bulkBtn.disabled = !anyChecked;
-        }
-
-        if (checkAll) {
-            checkAll.addEventListener('change', function() {
-                rowChecks.forEach(c => (c.checked = this.checked));
-                syncBulkButton();
-            });
-        }
-
-        rowChecks.forEach(c => c.addEventListener('change', syncBulkButton));
-
-        if (bulkForm && tableForm) {
-            bulkForm.addEventListener('submit', function(e) {
-                e.preventDefault();
-                syncColumnsToForms();
-                tableForm.submit();
-            });
-        }
-
-        function syncColumnsToForms() {
-            const cols = Array.from(document.querySelectorAll('input[name="columns[]"]:checked'))
-                .map(c => c.value);
-            const forms = [bulkForm, tableForm];
-            forms.forEach(f => {
-                if (!f) return;
-                f.querySelectorAll('input[name="columns[]"]').forEach(el => el.remove());
-                cols.forEach(c => {
-                    const input = document.createElement('input');
-                    input.type = 'hidden';
-                    input.name = 'columns[]';
-                    input.value = c;
-                    f.appendChild(input);
-                });
-            });
-        }
-
-        // ensure export links include current columns
-        document.querySelectorAll('input[name="columns[]"]').forEach(c => {
-            c.addEventListener('change', function() {
-                const qs = new URLSearchParams(new FormData(this.closest('form')));
-                const csvLink = document.querySelector('a[href^="{{ route('documents.export_csv') }}"]');
-                const pdfLink = document.querySelector('a[href^="{{ route('documents.export_pdf') }}"]');
-                if (csvLink) csvLink.href = "{{ route('documents.export_csv') }}" + "?" + qs.toString();
-                if (pdfLink) pdfLink.href = "{{ route('documents.export_pdf') }}" + "?" + qs.toString();
-            });
-        });
-    </script>
-
-</x-app-layout>
+    </x-app-layout>

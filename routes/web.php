@@ -64,6 +64,14 @@ Route::middleware(['auth'])->group(function () {
         ->name('documents.export_selected');
     Route::get('/documents/export-pdf', [DocumentController::class, 'exportPdf'])
         ->name('documents.export_pdf');
+    Route::get('/documents/export-template/preview', [DocumentController::class, 'exportTemplatePreview'])
+        ->name('documents.export_template_preview');
+    Route::get('/documents/export-template/pdf', [DocumentController::class, 'exportTemplatePdf'])
+        ->name('documents.export_template_pdf');
+    Route::get('/documents/export-dashboard-template/pdf', [DocumentController::class, 'exportDashboardTemplatePdf'])
+        ->name('documents.export_dashboard_template_pdf');
+    Route::get('/documents/export-template/xlsx', [DocumentController::class, 'exportTemplateXlsx'])
+        ->name('documents.export_template_xlsx');
 });
 
 // =====================================
@@ -83,6 +91,12 @@ Route::middleware(['auth', 'admin'])->prefix('documents')->group(function () {
         ->name('documents.related.update');
     Route::delete('/{id}/related/{relatedId}', [DocumentController::class, 'deleteRelated'])
         ->name('documents.related.delete');
+    Route::get('/{id}/revisions/{revisionId}/edit', [DocumentController::class, 'editRevision'])
+        ->name('documents.revisions.edit');
+    Route::put('/{id}/revisions/{revisionId}', [DocumentController::class, 'updateRevision'])
+        ->name('documents.revisions.update');
+    Route::delete('/{id}/revisions/{revisionId}', [DocumentController::class, 'deleteRevision'])
+        ->name('documents.revisions.delete');
 });
 
 // =====================================
@@ -103,11 +117,18 @@ Route::middleware(['auth', 'admin'])
         Route::resource('sites', SiteController::class)->except(['show']);
         Route::resource('document-types', DocumentTypeController::class);
         Route::get('audits', [DocumentAuditController::class, 'index'])->name('audits.index');
+        Route::get('audits/{id}/edit', [DocumentAuditController::class, 'edit'])->name('audits.edit');
+        Route::put('audits/{id}', [DocumentAuditController::class, 'update'])->name('audits.update');
+        Route::delete('audits', [DocumentAuditController::class, 'destroySelected'])->name('audits.destroy_selected');
+        Route::delete('audits/{id}', [DocumentAuditController::class, 'destroy'])->name('audits.destroy');
     });
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth'])
     ->name('dashboard');
+Route::get('/dashboard/export-pdf', [DashboardController::class, 'exportPdf'])
+    ->middleware(['auth'])
+    ->name('dashboard.export_pdf');
 
 
 

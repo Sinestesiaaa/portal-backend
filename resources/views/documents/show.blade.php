@@ -1,4 +1,43 @@
 <x-app-layout>
+    <style>
+        .mini-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            line-height: 1;
+            vertical-align: middle;
+        }
+
+        .tooltip {
+            position: relative;
+            display: inline-flex;
+        }
+
+        .tooltip .tooltip-text {
+            position: absolute;
+            bottom: calc(100% + 6px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: #111827;
+            color: #fff;
+            font-size: 12px;
+            line-height: 1;
+            white-space: nowrap;
+            padding: 6px 8px;
+            border-radius: 6px;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.15s ease;
+            z-index: 60;
+            pointer-events: none;
+        }
+
+        .tooltip:hover .tooltip-text {
+            opacity: 1;
+            visibility: visible;
+        }
+    </style>
 
     <div class="max-w-7xl mx-auto px-6 py-10 space-y-6">
 
@@ -10,16 +49,6 @@
 
         @if (session('success'))
             <div class="p-3 bg-green-200 text-green-900 rounded-lg shadow-sm">{{ session('success') }}</div>
-        @endif
-
-        @if ($audits->count())
-            @php
-                $last = $audits->first();
-            @endphp
-            <div class="p-3 bg-blue-50 text-blue-900 rounded-lg shadow-sm">
-                Terakhir diubah oleh <b>{{ $last->user->name ?? '-' }}</b>
-                pada <b>{{ $last->created_at?->format('Y-m-d H:i') ?? '-' }}</b>.
-            </div>
         @endif
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -99,6 +128,15 @@
                     </div>
                 @endif
 
+                @if ($audits->count())
+                    @php
+                        $last = $audits->first();
+                    @endphp
+                    <div class="text-xs text-gray-500">
+                        Update terakhir: {{ $last->user->name ?? '-' }} - {{ $last->created_at?->format('Y-m-d H:i') ?? '-' }}
+                    </div>
+                @endif
+
                 <div class="pt-2 flex flex-col sm:flex-row gap-3">
                     <a href="{{ route('documents.index') }}"
                         class="w-full sm:w-auto px-5 py-2 bg-gray-300 rounded-lg hover:bg-gray-400 text-center">Kembali</a>
@@ -129,17 +167,27 @@
                     @endif
                 </div>
 
-                <div class="text-sm text-gray-600">
-                    @if ($document->kategori === 'FORM')
-                        Formulir:
-                        <a href="{{ route('documents.download', $document->id) }}"
-                            class="text-blue-600 hover:underline">Unduh</a>
-                    @else
-                        Dokumen:
-                        <a href="{{ route('documents.download', $document->id) }}"
-                            class="text-blue-600 hover:underline">Unduh</a>
+                <div class="flex flex-wrap items-center gap-2">
+                    @if ($document->kategori !== 'FORM' || $document->form_description_path)
+                        <button type="button"
+                            onclick="openPdfModal('{{ $document->kategori === 'FORM' ? route('documents.preview_description', $document->id) : route('documents.preview', $document->id) }}')"
+                            class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 hover:bg-gray-50">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M10 3c4.418 0 7.418 3.503 8.58 5.285a1.25 1.25 0 0 1 0 1.43C17.418 11.497 14.418 15 10 15s-7.418-3.503-8.58-5.285a1.25 1.25 0 0 1 0-1.43C2.582 6.503 5.582 3 10 3Zm0 2.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z"/>
+                            </svg>
+                            <span>Lihat Dokumen</span>
+                        </button>
                     @endif
+                    <a href="{{ route('documents.download', $document->id) }}"
+                        class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 hover:bg-gray-50">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M10 2a1 1 0 0 1 1 1v7.586l2.293-2.293a1 1 0 1 1 1.414 1.414l-4 4a1 1 0 0 1-1.414 0l-4-4a1 1 0 0 1 1.414-1.414L9 10.586V3a1 1 0 0 1 1-1Z"/>
+                            <path d="M3 14a1 1 0 0 1 1 1v1h12v-1a1 1 0 1 1 2 0v2a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-2a1 1 0 0 1 1-1Z"/>
+                        </svg>
+                        <span>Unduh File</span>
+                    </a>
                 </div>
+
             </div>
         </div>
 
@@ -170,13 +218,14 @@
                                     <td class="p-3">{{ $rel->kategori }}</td>
                                     <td class="p-3 font-semibold text-gray-800">
                                         <a href="{{ route('documents.show', $rel->id) }}"
-                                            class="text-blue-600 hover:underline">
+                                            class="text-gray-900 hover:underline">
                                             {{ $rel->document_number }}
                                         </a>
                                     </td>
                                     <td class="p-3 font-medium text-gray-800">
                                         <a href="{{ route('documents.show', $rel->id) }}"
-                                            class="text-blue-600 hover:underline">
+                                            class="text-gray-900 hover:underline"
+                                            title="{{ $rel->title }}">
                                             {{ $rel->title }}
                                         </a>
                                     </td>
@@ -184,52 +233,55 @@
                                     <td class="p-3 text-center">
                                         @if ($rel->kategori === 'FORM')
                                             <a href="{{ route('documents.download', $rel->id) }}"
-                                                class="text-blue-600 hover:underline">
-                                                <span class="tooltip" aria-label="Unduh Formulir">
-                                                    <span>⬇️</span>
-                                                    <span class="tooltip-text">Unduh Formulir</span>
-                                                </span>
+                                                class="tooltip mini-icon"
+                                                aria-label="Unduh Formulir">
+                                                <span>⬇️</span>
+                                                <span class="tooltip-text">Unduh Formulir</span>
                                             </a>
                                             @if ($rel->form_description_path)
-                                                <button
+                                                <button type="button"
                                                     onclick="openPdfModal('{{ route('documents.preview_description', $rel->id) }}')"
-                                                    class="text-blue-600 hover:underline ml-2">
-                                                    <span class="tooltip" aria-label="Lihat Penjelasan">
-                                                        <span>👁️</span>
-                                                        <span class="tooltip-text">Lihat Penjelasan</span>
-                                                    </span>
+                                                    class="tooltip mini-icon ml-2"
+                                                    aria-label="Lihat Penjelasan">
+                                                    <span>👁️</span>
+                                                    <span class="tooltip-text">Lihat Penjelasan</span>
                                                 </button>
                                             @endif
                                         @else
-                                            <button onclick="openPdfModal('{{ route('documents.preview', $rel->id) }}')"
-                                                class="text-blue-600 hover:underline">
-                                                <span class="tooltip" aria-label="Lihat">
-                                                    <span>👁️</span>
-                                                    <span class="tooltip-text">Lihat</span>
-                                                </span>
+                                            <button type="button"
+                                                onclick="openPdfModal('{{ route('documents.preview', $rel->id) }}')"
+                                                class="tooltip mini-icon"
+                                                aria-label="Lihat Dokumen">
+                                                <span>👁️</span>
+                                                <span class="tooltip-text">Lihat Dokumen</span>
                                             </button>
                                             <a href="{{ route('documents.download', $rel->id) }}"
-                                                class="ml-2 text-blue-600 hover:underline">
-                                                <span class="tooltip" aria-label="Unduh">
-                                                    <span>⬇️</span>
-                                                    <span class="tooltip-text">Unduh</span>
-                                                </span>
+                                                class="tooltip mini-icon ml-2"
+                                                aria-label="Unduh Dokumen">
+                                                <span>⬇️</span>
+                                                <span class="tooltip-text">Unduh Dokumen</span>
                                             </a>
                                         @endif
                                     </td>
                                     @can('document.manage')
                                         <td class="p-3 text-center">
+                                            <a href="{{ route('documents.edit', $rel->id) }}"
+                                                class="tooltip mini-icon mr-2"
+                                                aria-label="Edit Dokumen">
+                                                <span>✏️</span>
+                                                <span class="tooltip-text">Edit Dokumen</span>
+                                            </a>
                                             <form
                                                 action="{{ route('documents.related.delete', [$document->id, $rel->id]) }}"
-                                                method="POST"
+                                                method="POST" class="inline"
                                                 onsubmit="return confirm('Hapus relasi dokumen ini?')">
                                                 @csrf
                                                 @method('DELETE')
-                                                <button class="text-red-600 hover:text-red-700">
-                                                    <span class="tooltip" aria-label="Hapus Relasi">
-                                                        <span>🗑️</span>
-                                                        <span class="tooltip-text">Hapus Relasi</span>
-                                                    </span>
+                                                <button type="submit"
+                                                    class="tooltip mini-icon text-red-600"
+                                                    aria-label="Hapus Relasi">
+                                                    <span>🗑️</span>
+                                                    <span class="tooltip-text">Hapus Relasi</span>
                                                 </button>
                                             </form>
                                         </td>
@@ -269,6 +321,9 @@
                             <th class="p-3">Tanggal</th>
                             <th class="p-3">Catatan</th>
                             <th class="p-3">Oleh</th>
+                            @can('document.manage')
+                                <th class="p-3 text-center">Aksi</th>
+                            @endcan
                         </tr>
                     </thead>
                     <tbody>
@@ -278,6 +333,23 @@
                                 <td class="p-3">{{ $rev->revised_at?->format('Y-m-d') ?? '-' }}</td>
                                 <td class="p-3">{{ $rev->revision_note }}</td>
                                 <td class="p-3">{{ $rev->revisedBy->name ?? '-' }}</td>
+                                @can('document.manage')
+                                    <td class="p-3 text-center">
+                                        <div class="flex items-center justify-center gap-3">
+                                            <a href="{{ route('documents.revisions.edit', [$document->id, $rev->id]) }}"
+                                                class="text-blue-600 hover:underline">Edit</a>
+                                            @if (app()->environment('local'))
+                                                <form method="POST"
+                                                    action="{{ route('documents.revisions.delete', [$document->id, $rev->id]) }}"
+                                                    onsubmit="return confirm('Hapus riwayat revisi ini?')">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button class="text-red-600 hover:text-red-700">Hapus</button>
+                                                </form>
+                                            @endif
+                                        </div>
+                                    </td>
+                                @endcan
                             </tr>
                         @endforeach
                     </tbody>
@@ -329,6 +401,38 @@
         @endif
         </div>
     </div>
+
+
+    {{-- PDF MODAL PREVIEW --}}
+    <div id="pdfModal"
+        class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 flex items-center justify-center">
+        <div class="bg-white rounded-xl shadow-2xl w-[98%] max-w-[1700px] h-[96vh] overflow-hidden flex flex-col">
+            <div class="flex items-center justify-between p-4 border-b">
+                <h3 class="font-semibold text-gray-800">Preview Dokumen</h3>
+                <button type="button" onclick="closePdfModal()"
+                    class="bg-red-600 hover:bg-red-700 text-white font-bold rounded-full px-3 py-1 shadow">X</button>
+            </div>
+            <iframe id="pdfFrame" src="" class="w-full flex-1" style="border: none;"></iframe>
+        </div>
+    </div>
+
+    <script>
+        function openPdfModal(url) {
+            const modal = document.getElementById('pdfModal');
+            const frame = document.getElementById('pdfFrame');
+            if (!modal || !frame) return;
+            frame.src = url;
+            modal.classList.remove('hidden');
+        }
+
+        function closePdfModal() {
+            const modal = document.getElementById('pdfModal');
+            const frame = document.getElementById('pdfFrame');
+            if (!modal || !frame) return;
+            frame.src = '';
+            modal.classList.add('hidden');
+        }
+    </script>
 
     @can('document.manage')
         {{-- RELATED MODAL --}}

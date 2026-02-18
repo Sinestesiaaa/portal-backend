@@ -4,7 +4,7 @@
 
         {{-- HEADER CARD --}}
         <div class="p-6 sm:p-8 rounded-2xl bg-gradient-to-r from-[#0AA03A] to-[#16A34A] shadow-lg text-white">
-            <h1 class="text-2xl sm:text-3xl font-bold tracking-wide">📊 Dashboard</h1>
+            <h1 class="text-2xl sm:text-3xl font-bold tracking-wide">Dashboard</h1>
             <p class="text-white/90 text-sm">Ringkasan aktivitas dokumen perusahaan</p>
         </div>
 
@@ -166,7 +166,7 @@
                 <div class="bg-white rounded-xl shadow-md border border-gray-200">
 
                     <div class="bg-[#0AA03A] text-white px-3 py-2 rounded-t-xl text-xs font-semibold text-center">
-                        {{ $deptName }} — Kategori
+                        {{ $deptName }}
                     </div>
 
                     <div class="p-4 flex justify-center items-center h-40">
@@ -187,6 +187,17 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 
     <script>
+        const integerTicks = {
+            beginAtZero: true,
+            ticks: {
+                stepSize: 1,
+                precision: 0,
+                callback: function(value) {
+                    return Number.isInteger(value) ? value : '';
+                }
+            }
+        };
+
         // PIE CHART
         new Chart(document.getElementById('kategoriChart'), {
             type: 'pie',
@@ -236,9 +247,7 @@
                 maintainAspectRatio: false,
                 indexAxis: 'y',
                 scales: {
-                    x: {
-                        beginAtZero: true
-                    }
+                    x: integerTicks
                 }
             }
         });
@@ -270,9 +279,7 @@
                         }
                     },
                     scales: {
-                        x: {
-                            beginAtZero: true
-                        }
+                        x: integerTicks
                     }
                 }
             });
