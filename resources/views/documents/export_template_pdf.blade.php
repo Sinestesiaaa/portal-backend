@@ -162,7 +162,7 @@
             <td rowspan="2">DEPT TERKAIT</td>
             <td rowspan="2">ISSUED DATE</td>
             <td colspan="5">TANGGAL STATUS REVISI</td>
-            <td rowspan="2">LOKASI PENYIMPANAN</td>
+            <td rowspan="2">LOKASI<br>PENYIMPANAN</td>
             <td rowspan="2">REMARKS</td>
         </tr>
         <tr class="header-green">

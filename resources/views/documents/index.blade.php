@@ -77,6 +77,19 @@
             text-overflow: ellipsis;
         }
 
+        /* Hard fallback for hosting differences (Tailwind/build cache) */
+        #pdfModal .pdf-modal-panel {
+            width: min(1700px, 96vw) !important;
+            height: 94vh !important;
+            max-height: 94vh !important;
+        }
+
+        #pdfFrame {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
     </style>
 @endpush
 
@@ -472,14 +485,15 @@
 
     {{-- PDF MODAL --}}
     <div id="pdfModal"
-        class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 flex items-center justify-center">
-        <div class="bg-white rounded-xl shadow-2xl overflow-hidden w-[98%] max-w-[1700px] h-[96vh] flex flex-col">
+        class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-3 md:p-6">
+        <div id="pdfModalPanel" class="pdf-modal-panel bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col"
+            style="max-width: 1700px; width: 96vw; height: 94vh;">
             <div class="flex items-center justify-between p-4 border-b">
                 <h3 class="font-semibold text-gray-800">Preview Dokumen</h3>
                 <button type="button" onclick="closePdfModal()"
                     class="bg-red-600 hover:bg-red-700 text-white font-bold rounded-full px-3 py-1 shadow">X</button>
             </div>
-            <iframe id="pdfFrame" class="w-full flex-1" style="border:none;" allow="fullscreen"
+            <iframe id="pdfFrame" class="w-full flex-1" style="border:none; min-height: 0;" allow="fullscreen"
                 loading="eager"></iframe>
         </div>
     </div>
@@ -549,13 +563,24 @@
         }
 
         function openPdfModal(url) {
-            document.getElementById("pdfFrame").src = url + "?v=" + Date.now();
-            document.getElementById("pdfModal").classList.remove("hidden");
+            const modal = document.getElementById("pdfModal");
+            const panel = document.getElementById("pdfModalPanel");
+            const frame = document.getElementById("pdfFrame");
+            if (!modal || !panel || !frame) return;
+            panel.style.width = Math.min(window.innerWidth * 0.96, 1700) + 'px';
+            panel.style.height = Math.round(window.innerHeight * 0.94) + 'px';
+            frame.src = url + "?v=" + Date.now();
+            modal.classList.remove("hidden");
+            document.body.style.overflow = 'hidden';
         }
 
         function closePdfModal() {
-            document.getElementById("pdfModal").classList.add("hidden");
-            document.getElementById("pdfFrame").src = "";
+            const modal = document.getElementById("pdfModal");
+            const frame = document.getElementById("pdfFrame");
+            if (!modal || !frame) return;
+            modal.classList.add("hidden");
+            frame.src = "";
+            document.body.style.overflow = '';
         }
 
         // Compact mode toggle (persist)

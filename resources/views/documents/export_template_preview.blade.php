@@ -1,4 +1,35 @@
 <x-app-layout>
+    <style>
+        .template-form-grid {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 16px;
+            align-items: start;
+        }
+
+        .scope-box,
+        .meta-box {
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 14px;
+            background: #f9fafb;
+        }
+
+        .scope-scroll {
+            border: 1px solid #d1d5db;
+            border-radius: 10px;
+            padding: 10px;
+            max-height: 320px;
+            overflow: auto;
+            background: #fff;
+        }
+
+        @media (max-width: 1024px) {
+            .template-form-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
     <div class="max-w-7xl mx-auto px-6 py-10 space-y-6">
         <div class="bg-gradient-to-r from-[#0AA03A] to-[#16A34A] text-white p-6 rounded-xl shadow-md">
             <h1 class="text-2xl font-bold tracking-wide">Preview Export Template</h1>
@@ -6,7 +37,7 @@
         </div>
 
         <div class="bg-white p-5 rounded-xl shadow-md border">
-            <form method="GET" action="{{ route('documents.export_template_preview') }}" class="grid grid-cols-1 md:grid-cols-12 gap-4" id="templatePreviewForm">
+            <form method="GET" action="{{ route('documents.export_template_preview') }}" class="space-y-4" id="templatePreviewForm">
                 @foreach (request()->except(['project', 'include_ho', 'department_ids', 'site_ids', 'site_department_map', 'update_date', 'header_doc_no', 'header_effective_date', 'header_revision']) as $qKey => $qValue)
                     @if (is_array($qValue))
                         @foreach ($qValue as $k => $v)
@@ -21,15 +52,15 @@
                     @endif
                 @endforeach
 
-                <div class="md:col-span-7">
-                    <div class="border border-gray-200 rounded-xl p-4 bg-gray-50">
+                <div class="template-form-grid">
+                    <div class="scope-box">
                         <div class="flex items-center justify-between mb-3">
                             <label class="text-sm font-semibold text-gray-800">Lingkup Dokumen</label>
                             <span class="text-xs text-gray-500">Checklist HO/Site, lalu atur departemen</span>
                         </div>
 
                         <input type="hidden" name="include_ho" value="0">
-                        <div class="border border-gray-300 rounded-lg px-3 py-2 max-h-72 overflow-auto space-y-2 bg-white">
+                        <div class="scope-scroll space-y-2">
                             <div class="pb-2 border-b border-gray-100">
                                 <label class="flex items-center gap-2 text-sm font-medium text-gray-800">
                                     <input type="checkbox" name="include_ho" value="1"
@@ -89,10 +120,8 @@
                             @endforeach
                         </div>
                     </div>
-                </div>
 
-                <div class="md:col-span-5">
-                    <div class="border border-gray-200 rounded-xl p-4 bg-gray-50">
+                    <div class="meta-box">
                         <label class="text-sm font-semibold text-gray-800 block mb-3">Metadata Dokumen</label>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div class="md:col-span-2">
@@ -119,7 +148,7 @@
                     </div>
                 </div>
 
-                <div class="md:col-span-12 flex flex-wrap gap-2 pt-1">
+                <div class="flex flex-wrap gap-2 pt-1">
                     <button class="px-4 py-2 bg-[#0AA03A] text-white rounded-lg hover:bg-[#087C2D]">Update Preview</button>
                     <a href="{{ route('documents.export_template_pdf', request()->query()) }}" class="px-4 py-2 bg-white border border-[#0AA03A] text-[#0AA03A] rounded-lg hover:bg-[#E8FCEB]">Export PDF Template</a>
                     <a href="{{ route('documents.export_template_xlsx', request()->query()) }}" class="px-4 py-2 bg-white border border-[#0AA03A] text-[#0AA03A] rounded-lg hover:bg-[#E8FCEB]">Export XLSX Template</a>

@@ -663,9 +663,8 @@ class DocumentController extends Controller
             'deptCategoryCharts' => $deptCategoryCharts,
         ]))->setPaper('a4', 'landscape');
 
-        $headerDocNo = (string) ($templateData['meta']['header_doc_no'] ?? 'PST/CPSD/F-006');
         $filename = $this->makeDownloadName(
-            $headerDocNo . ' - Dashboard + Daftar Induk Dokumen - ' . now()->format('Y-m-d'),
+            'Weekly Report Document - ' . now()->format('Y-m-d'),
             'pdf'
         );
 

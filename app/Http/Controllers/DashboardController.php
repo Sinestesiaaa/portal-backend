@@ -46,7 +46,7 @@ class DashboardController extends Controller
                 'user' => $user,
             ])->setPaper('a4', 'portrait');
 
-            return $pdf->download('dashboard-' . ($user->department->name ?? 'user') . '-' . now()->format('Ymd-His') . '.pdf');
+            return $pdf->download('Document Report - ' . now()->format('Y-m-d') . '.pdf');
         }
 
         $categoryCount = Document::select('kategori', DB::raw('COUNT(*) as total'))
@@ -134,7 +134,7 @@ class DashboardController extends Controller
             'totalDocuments' => array_sum($categoryCount->toArray()),
         ])->setPaper('a4', 'landscape');
 
-        return $pdf->download('dashboard-report-' . now()->format('Ymd-His') . '.pdf');
+        return $pdf->download('Document Report - ' . now()->format('Y-m-d') . '.pdf');
     }
 
     private function makePieChartDataUri(array $labels, array $values, string $title = ''): string

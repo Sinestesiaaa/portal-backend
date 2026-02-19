@@ -1,4 +1,21 @@
 <div class="bg-white p-4 rounded-xl shadow-md border overflow-x-auto">
+    @php
+        $logoCandidates = ['logo.png', 'images/logo.png', 'img/logo.png', 'assets/logo.png'];
+        $logoData = null;
+        foreach ($logoCandidates as $relPath) {
+            $fullPath = public_path($relPath);
+            if (is_file($fullPath)) {
+                $ext = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
+                $mime = match ($ext) {
+                    'jpg', 'jpeg' => 'image/jpeg',
+                    'svg' => 'image/svg+xml',
+                    default => 'image/png',
+                };
+                $logoData = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($fullPath));
+                break;
+            }
+        }
+    @endphp
     <table class="w-full border border-black text-sm table-fixed" style="border-collapse: collapse;">
         <colgroup>
             <col style="width: 15%;">
@@ -7,7 +24,11 @@
         </colgroup>
         <tr>
             <td class="border border-black text-center align-middle" rowspan="2">
-                <img src="{{ asset('logo.png') }}" alt="Logo PST" style="height: 78px; margin: 0 auto;">
+                @if ($logoData)
+                    <img src="{{ $logoData }}" alt="Logo PST" style="height: 78px; margin: 0 auto;">
+                @else
+                    <span style="font-weight:700; font-size:26px;">PST</span>
+                @endif
             </td>
             <td class="border border-black text-center font-bold leading-tight py-3" style="font-size: 22px;">FORMULIR
             </td>
@@ -58,8 +79,8 @@
         </div>
     </div>
 
-    <table class="w-full border border-black text-sm">
-        <tr class="bg-[#4f7f34] text-white text-center font-semibold">
+    <table class="w-full border border-black text-sm" style="border-collapse: collapse; table-layout: fixed;">
+        <tr style="background: #4f7f34; color: #ffffff; text-align: center; font-weight: 700;">
             <td class="border border-black p-2" rowspan="2">NO</td>
             <td class="border border-black p-2" rowspan="2">DEPT</td>
             <td class="border border-black p-2" rowspan="2">JENIS</td>
@@ -71,7 +92,7 @@
             <td class="border border-black p-2" rowspan="2">LOKASI PENYIMPANAN</td>
             <td class="border border-black p-2" rowspan="2">REMARKS</td>
         </tr>
-        <tr class="bg-[#4f7f34] text-white text-center font-semibold">
+        <tr style="background: #4f7f34; color: #ffffff; text-align: center; font-weight: 700;">
             <td class="border border-black p-2">Revisi 1</td>
             <td class="border border-black p-2">Revisi 2</td>
             <td class="border border-black p-2">Revisi 3</td>
@@ -83,8 +104,8 @@
                 <td class="border border-black p-2 text-center">{{ $row['no'] }}</td>
                 <td class="border border-black p-2">{{ $row['dept'] }}</td>
                 <td class="border border-black p-2">{{ $row['jenis'] }}</td>
-                <td class="border border-black p-2">{{ $row['nomor_dokumen'] }}</td>
-                <td class="border border-black p-2">{{ $row['judul_dokumen'] }}</td>
+                <td class="border border-black p-2" style="word-break: break-word;">{{ $row['nomor_dokumen'] }}</td>
+                <td class="border border-black p-2" style="word-break: break-word;">{{ $row['judul_dokumen'] }}</td>
                 <td class="border border-black p-2">{{ $row['departemen_terkait'] }}</td>
                 <td class="border border-black p-2 text-center">{{ $row['issued_date'] }}</td>
                 <td class="border border-black p-2 text-center">{{ $row['revisi_1'] }}</td>
@@ -92,7 +113,7 @@
                 <td class="border border-black p-2 text-center">{{ $row['revisi_3'] }}</td>
                 <td class="border border-black p-2 text-center">{{ $row['revisi_4'] }}</td>
                 <td class="border border-black p-2 text-center">{{ $row['revisi_5'] }}</td>
-                <td class="border border-black p-2">{{ $row['lokasi_penyimpanan'] }}</td>
+                <td class="border border-black p-2" style="word-break: break-word;">{{ $row['lokasi_penyimpanan'] }}</td>
                 <td class="border border-black p-2">{{ $row['remarks'] }}</td>
             </tr>
         @empty

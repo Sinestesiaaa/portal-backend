@@ -37,6 +37,19 @@
             opacity: 1;
             visibility: visible;
         }
+
+        /* Hard fallback for hosting differences (Tailwind/build cache) */
+        #pdfModal .pdf-modal-panel {
+            width: min(1700px, 96vw) !important;
+            height: 94vh !important;
+            max-height: 94vh !important;
+        }
+
+        #pdfFrame {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
     </style>
 
     <div class="max-w-7xl mx-auto px-6 py-10 space-y-6">
@@ -405,24 +418,29 @@
 
     {{-- PDF MODAL PREVIEW --}}
     <div id="pdfModal"
-        class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 flex items-center justify-center">
-        <div class="bg-white rounded-xl shadow-2xl w-[98%] max-w-[1700px] h-[96vh] overflow-hidden flex flex-col">
+        class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-3 md:p-6">
+        <div id="pdfModalPanel" class="pdf-modal-panel bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col"
+            style="max-width: 1700px; width: 96vw; height: 94vh;">
             <div class="flex items-center justify-between p-4 border-b">
                 <h3 class="font-semibold text-gray-800">Preview Dokumen</h3>
                 <button type="button" onclick="closePdfModal()"
                     class="bg-red-600 hover:bg-red-700 text-white font-bold rounded-full px-3 py-1 shadow">X</button>
             </div>
-            <iframe id="pdfFrame" src="" class="w-full flex-1" style="border: none;"></iframe>
+            <iframe id="pdfFrame" src="" class="w-full flex-1" style="border: none; min-height: 0;"></iframe>
         </div>
     </div>
 
     <script>
         function openPdfModal(url) {
             const modal = document.getElementById('pdfModal');
+            const panel = document.getElementById('pdfModalPanel');
             const frame = document.getElementById('pdfFrame');
-            if (!modal || !frame) return;
+            if (!modal || !panel || !frame) return;
+            panel.style.width = Math.min(window.innerWidth * 0.96, 1700) + 'px';
+            panel.style.height = Math.round(window.innerHeight * 0.94) + 'px';
             frame.src = url;
             modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
         }
 
         function closePdfModal() {
@@ -431,6 +449,7 @@
             if (!modal || !frame) return;
             frame.src = '';
             modal.classList.add('hidden');
+            document.body.style.overflow = '';
         }
     </script>
 
