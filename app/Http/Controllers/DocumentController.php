@@ -177,7 +177,13 @@ class DocumentController extends Controller
             $documents->where('site_id', $request->site_id);
         }
 
-        $perPage = 50;
+        $allowedPerPages = ['25', '50', '100', '200', 'all'];
+        $perPageRaw = (string) $request->query('per_page', '50');
+        if (!in_array($perPageRaw, $allowedPerPages, true)) {
+            $perPageRaw = '50';
+        }
+        $isAllDocs = $perPageRaw === 'all';
+        $perPage = $isAllDocs ? max(1, (clone $documents)->count()) : (int) $perPageRaw;
         $sort = $request->query('sort');
         $order = strtolower($request->query('order', 'asc')) === 'desc' ? 'desc' : 'asc';
         $allowedSorts = ['title', 'published_at', 'revision_number'];
@@ -199,7 +205,7 @@ class DocumentController extends Controller
                 return extractDocNumber($a->document_number) <=> extractDocNumber($b->document_number);
             });
 
-            $page = request('page', 1);
+            $page = $isAllDocs ? 1 : (int) request('page', 1);
             $total = $documents->count();
             $documentsPage = $documents->slice(($page - 1) * $perPage, $perPage)->values();
 
@@ -218,6 +224,7 @@ class DocumentController extends Controller
             'sites' => Site::where('is_active', true)->orderBy('name')->get(),
             'documentTypes' => $documentTypes,
             'totalResult' => $total,
+            'perPageRaw' => $perPageRaw,
         ]);
     }
 
@@ -803,38 +810,8 @@ class DocumentController extends Controller
 
     private function buildTemplateExportData(Request $request): array
     {
-        $includeHo = filter_var($request->query('include_ho', '1'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
-        $includeHo = $includeHo === null ? true : $includeHo;
-        $selectedDepartmentIds = collect((array) $request->query('department_ids', []))
-            ->map(fn($v) => (int) $v)
-            ->filter(fn($v) => $v > 0)
-            ->unique()
-            ->values()
-            ->all();
-        $selectedSiteIds = collect((array) $request->query('site_ids', []))
-            ->map(fn($v) => (int) $v)
-            ->filter(fn($v) => $v > 0)
-            ->unique()
-            ->values()
-            ->all();
-        $siteDepartmentMap = collect((array) $request->query('site_department_map', []))
-            ->mapWithKeys(function ($v, $k) {
-                $siteId = (int) $k;
-                if ($siteId <= 0) {
-                    return [];
-                }
-                $vals = collect((array) $v)
-                    ->map(fn($x) => (string) $x)
-                    ->filter(fn($x) => $x !== '')
-                    ->unique()
-                    ->values()
-                    ->all();
-                if (count($vals) === 0) {
-                    $vals = ['all'];
-                }
-                return [$siteId => $vals];
-            })
-            ->all();
+        [$includeHo, $selectedDepartmentIds, $selectedSiteIds, $siteDepartmentMap] = $this->parseTemplateScope($request);
+        [$project, $updateDate, $headerDocNo, $headerEffectiveDate, $headerRevision] = $this->parseTemplateMeta($request);
 
         $documents = $this->queryDocumentsForTemplateExport($request);
 
@@ -866,8 +843,6 @@ class DocumentController extends Controller
         $rowsPerPage = max(1, (int) $request->query('rows_per_page', 25));
         $totalPages = max(1, (int) ceil(max(1, $rows->count()) / $rowsPerPage));
 
-        $project = trim((string) $request->query('project', ''));
-        $updateDate = trim((string) $request->query('update_date', ''));
         if ($updateDate === '') {
             $updateDate = now()->format('Y-m-d');
         }
@@ -882,9 +857,9 @@ class DocumentController extends Controller
             'project' => $project,
             'update_date' => $updateDate,
             'update_date_display' => $updateDateDisplay,
-            'header_doc_no' => (string) $request->query('header_doc_no', 'PST/CPSD/F-006'),
-            'header_effective_date' => (string) $request->query('header_effective_date', '8 April 2025'),
-            'header_revision' => (string) $request->query('header_revision', '0'),
+            'header_doc_no' => $headerDocNo,
+            'header_effective_date' => $headerEffectiveDate,
+            'header_revision' => $headerRevision,
             'header_page' => '1 dari ' . $totalPages,
             'include_ho' => $includeHo,
             'department_ids' => $selectedDepartmentIds,
@@ -904,38 +879,7 @@ class DocumentController extends Controller
     private function queryDocumentsForTemplateExport(Request $request)
     {
         $user = Auth::user();
-        $includeHo = filter_var($request->query('include_ho', '1'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
-        $includeHo = $includeHo === null ? true : $includeHo;
-        $selectedDepartmentIds = collect((array) $request->query('department_ids', []))
-            ->map(fn($v) => (int) $v)
-            ->filter(fn($v) => $v > 0)
-            ->unique()
-            ->values()
-            ->all();
-        $selectedSiteIds = collect((array) $request->query('site_ids', []))
-            ->map(fn($v) => (int) $v)
-            ->filter(fn($v) => $v > 0)
-            ->unique()
-            ->values()
-            ->all();
-        $siteDepartmentMap = collect((array) $request->query('site_department_map', []))
-            ->mapWithKeys(function ($v, $k) {
-                $siteId = (int) $k;
-                if ($siteId <= 0) {
-                    return [];
-                }
-                $vals = collect((array) $v)
-                    ->map(fn($x) => (string) $x)
-                    ->filter(fn($x) => $x !== '')
-                    ->unique()
-                    ->values()
-                    ->all();
-                if (count($vals) === 0) {
-                    $vals = ['all'];
-                }
-                return [$siteId => $vals];
-            })
-            ->all();
+        [$includeHo, $selectedDepartmentIds, $selectedSiteIds, $siteDepartmentMap] = $this->parseTemplateScope($request);
 
         $documents = Document::with([
             'department',
@@ -1036,6 +980,94 @@ class DocumentController extends Controller
             if ($katA !== $katB) return $katA <=> $katB;
             return extractDocNumber($a->document_number) <=> extractDocNumber($b->document_number);
         });
+    }
+
+    private function parseTemplateScope(Request $request): array
+    {
+        $normalizeMap = function (array $raw): array {
+            return collect($raw)->mapWithKeys(function ($v, $k) {
+                $siteId = (int) $k;
+                if ($siteId <= 0) {
+                    return [];
+                }
+                $vals = collect((array) $v)
+                    ->map(fn($x) => (string) $x)
+                    ->filter(fn($x) => $x !== '')
+                    ->unique()
+                    ->values()
+                    ->all();
+                if (count($vals) === 0) {
+                    $vals = ['all'];
+                }
+                return [$siteId => $vals];
+            })->all();
+        };
+
+        $payload = (string) $request->input('scope_payload', '');
+        if ($payload !== '') {
+            $decoded = base64_decode(strtr($payload, '-_', '+/'), true);
+            $parsed = is_string($decoded) ? json_decode($decoded, true) : null;
+            if (is_array($parsed)) {
+                $includeHo = (bool) ($parsed['include_ho'] ?? true);
+                $selectedDepartmentIds = collect((array) ($parsed['department_ids'] ?? []))
+                    ->map(fn($v) => (int) $v)
+                    ->filter(fn($v) => $v > 0)
+                    ->unique()
+                    ->values()
+                    ->all();
+                $selectedSiteIds = collect((array) ($parsed['site_ids'] ?? []))
+                    ->map(fn($v) => (int) $v)
+                    ->filter(fn($v) => $v > 0)
+                    ->unique()
+                    ->values()
+                    ->all();
+                $siteDepartmentMap = $normalizeMap((array) ($parsed['site_department_map'] ?? []));
+
+                return [$includeHo, $selectedDepartmentIds, $selectedSiteIds, $siteDepartmentMap];
+            }
+        }
+
+        $includeHo = filter_var($request->input('include_ho', '1'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+        $includeHo = $includeHo === null ? true : $includeHo;
+        $selectedDepartmentIds = collect((array) $request->input('department_ids', []))
+            ->map(fn($v) => (int) $v)
+            ->filter(fn($v) => $v > 0)
+            ->unique()
+            ->values()
+            ->all();
+        $selectedSiteIds = collect((array) $request->input('site_ids', []))
+            ->map(fn($v) => (int) $v)
+            ->filter(fn($v) => $v > 0)
+            ->unique()
+            ->values()
+            ->all();
+        $siteDepartmentMap = $normalizeMap((array) $request->input('site_department_map', []));
+
+        return [$includeHo, $selectedDepartmentIds, $selectedSiteIds, $siteDepartmentMap];
+    }
+
+    private function parseTemplateMeta(Request $request): array
+    {
+        $project = trim((string) $request->input('project', ''));
+        $updateDate = trim((string) $request->input('update_date', ''));
+        $headerDocNo = (string) $request->input('header_doc_no', 'PST/CPSD/F-006');
+        $headerEffectiveDate = (string) $request->input('header_effective_date', '8 April 2025');
+        $headerRevision = (string) $request->input('header_revision', '0');
+
+        $payload = (string) $request->input('metadata_payload', '');
+        if ($payload !== '') {
+            $decoded = base64_decode(strtr($payload, '-_', '+/'), true);
+            $parsed = is_string($decoded) ? json_decode($decoded, true) : null;
+            if (is_array($parsed)) {
+                $project = trim((string) ($parsed['project'] ?? $project));
+                $updateDate = trim((string) ($parsed['update_date'] ?? $updateDate));
+                $headerDocNo = (string) ($parsed['header_doc_no'] ?? $headerDocNo);
+                $headerEffectiveDate = (string) ($parsed['header_effective_date'] ?? $headerEffectiveDate);
+                $headerRevision = (string) ($parsed['header_revision'] ?? $headerRevision);
+            }
+        }
+
+        return [$project, $updateDate, $headerDocNo, $headerEffectiveDate, $headerRevision];
     }
 
     private function buildTemplateProjectName(bool $includeHo, array $departmentIds, array $siteIds): string

@@ -358,8 +358,33 @@
     <div class="page-break"></div>
 
     @php
-        $logoPath = public_path('logo.png');
-        $logoData = file_exists($logoPath) ? base64_encode(file_get_contents($logoPath)) : null;
+        $baseParent = dirname(base_path());
+        $logoCandidates = [
+            public_path('logo.png'),
+            public_path('images/logo.png'),
+            public_path('img/logo.png'),
+            public_path('assets/logo.png'),
+            base_path('public/logo.png'),
+            base_path('public/images/logo.png'),
+            base_path('public_html/logo.png'),
+            base_path('public_html/images/logo.png'),
+            $baseParent . DIRECTORY_SEPARATOR . 'public_html' . DIRECTORY_SEPARATOR . 'logo.png',
+            $baseParent . DIRECTORY_SEPARATOR . 'public_html' . DIRECTORY_SEPARATOR . 'images' . DIRECTORY_SEPARATOR . 'logo.png',
+        ];
+        $logoData = null;
+        foreach ($logoCandidates as $fullPath) {
+            if (!is_file($fullPath)) {
+                continue;
+            }
+            $ext = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
+            $mime = match ($ext) {
+                'jpg', 'jpeg' => 'image/jpeg',
+                'svg' => 'image/svg+xml',
+                default => 'image/png',
+            };
+            $logoData = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($fullPath));
+            break;
+        }
     @endphp
 
     <table class="di-head" style="table-layout: fixed;">
@@ -371,7 +396,7 @@
         <tr>
             <td class="center bold" rowspan="2">
                 @if ($logoData)
-                    <img src="data:image/png;base64,{{ $logoData }}" style="height: 80px; width: 17%;">
+                    <img src="{{ $logoData }}" style="height: 80px;">
                 @else
                     PST
                 @endif

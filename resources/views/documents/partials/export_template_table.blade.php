@@ -1,9 +1,20 @@
 <div class="bg-white p-4 rounded-xl shadow-md border overflow-x-auto">
     @php
-        $logoCandidates = ['logo.png', 'images/logo.png', 'img/logo.png', 'assets/logo.png'];
+        $baseParent = dirname(base_path());
+        $logoCandidates = [
+            public_path('logo.png'),
+            public_path('images/logo.png'),
+            public_path('img/logo.png'),
+            public_path('assets/logo.png'),
+            base_path('public/logo.png'),
+            base_path('public/images/logo.png'),
+            base_path('public_html/logo.png'),
+            base_path('public_html/images/logo.png'),
+            $baseParent . DIRECTORY_SEPARATOR . 'public_html' . DIRECTORY_SEPARATOR . 'logo.png',
+            $baseParent . DIRECTORY_SEPARATOR . 'public_html' . DIRECTORY_SEPARATOR . 'images' . DIRECTORY_SEPARATOR . 'logo.png',
+        ];
         $logoData = null;
-        foreach ($logoCandidates as $relPath) {
-            $fullPath = public_path($relPath);
+        foreach ($logoCandidates as $fullPath) {
             if (is_file($fullPath)) {
                 $ext = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
                 $mime = match ($ext) {

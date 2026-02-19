@@ -95,6 +95,18 @@
                     </select>
                 </div>
 
+                <div class="md:col-span-2">
+                    <select name="per_page"
+                        class="border border-gray-300 rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-[#16A34A]">
+                        @foreach ([25, 50, 100, 200, 'all'] as $size)
+                            <option value="{{ $size }}"
+                                {{ (string) request('per_page', '50') === (string) $size ? 'selected' : '' }}>
+                                {{ $size === 'all' ? 'ALL DOCUMENT' : $size . ' / halaman' }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
                 <div class="md:col-span-1">
                     <button class="w-full bg-[#0AA03A] text-white px-4 py-2 rounded-lg shadow hover:bg-[#087C2D]">
                         Filter
@@ -207,6 +219,8 @@
             @endif
         </div>
 
+        <p class="text-gray-700 text-sm ml-1">Menampilkan <b>{{ $documents->total() }}</b> dokumen.</p>
+
 
         <div class="bg-white p-5 rounded-xl shadow-lg border overflow-x-auto">
             <form id="bulkExportForm" action="{{ route('documents.export_selected') }}" method="POST"
@@ -278,7 +292,35 @@
                 </table>
             </form>
         </div>
-        <div class="mt-4">{{ $documents->links() }}</div>
+        <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div class="text-sm text-gray-600">
+                Halaman {{ $documents->currentPage() }} dari {{ $documents->lastPage() }}.
+                Menampilkan {{ $documents->firstItem() ?? 0 }}-{{ $documents->lastItem() ?? 0 }}
+                dari {{ $documents->total() }} dokumen.
+            </div>
+            <div>{{ $documents->onEachSide(1)->links('vendor.pagination.cpsd') }}</div>
+            <form method="GET" class="flex items-center gap-2">
+                @foreach (request()->except('page') as $qKey => $qValue)
+                    @if (is_array($qValue))
+                        @foreach ($qValue as $k => $v)
+                            @if (is_string($k))
+                                <input type="hidden" name="{{ $qKey }}[{{ $k }}]" value="{{ $v }}">
+                            @else
+                                <input type="hidden" name="{{ $qKey }}[]" value="{{ $v }}">
+                            @endif
+                        @endforeach
+                    @else
+                        <input type="hidden" name="{{ $qKey }}" value="{{ $qValue }}">
+                    @endif
+                @endforeach
+                <label for="goto-page" class="text-sm text-gray-600">Ke halaman</label>
+                <input id="goto-page" type="number" name="page" min="1" max="{{ $documents->lastPage() }}"
+                    value="{{ $documents->currentPage() }}"
+                    class="w-20 border border-gray-300 rounded-lg px-2 py-1 text-sm">
+                <button type="submit"
+                    class="px-3 py-1.5 text-sm bg-gray-200 rounded-lg hover:bg-gray-300">Go</button>
+            </form>
+        </div>
 
         <div id="previewExportModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4">
             <div class="w-full max-w-7xl bg-white rounded-xl shadow-2xl border overflow-hidden">

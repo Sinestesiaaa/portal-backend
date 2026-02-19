@@ -64,7 +64,7 @@ Route::middleware(['auth'])->group(function () {
         ->name('documents.export_selected');
     Route::get('/documents/export-pdf', [DocumentController::class, 'exportPdf'])
         ->name('documents.export_pdf');
-    Route::get('/documents/export-template/preview', [DocumentController::class, 'exportTemplatePreview'])
+    Route::match(['get', 'post'], '/documents/export-template/preview', [DocumentController::class, 'exportTemplatePreview'])
         ->name('documents.export_template_preview');
     Route::get('/documents/export-template/pdf', [DocumentController::class, 'exportTemplatePdf'])
         ->name('documents.export_template_pdf');
